@@ -47,7 +47,7 @@
   </section>
 
   <!-- SAVE / LOAD SLOTS -->
-  <section class="screen" id="screen-slots">
+  <section class="screen panel" id="screen-slots">
     <div class="card">
       <button class="nav-back" id="backFromSlots">← Back</button>
       <h2 id="slotsTitle">Load game</h2>
@@ -57,7 +57,7 @@
   </section>
 
   <!-- OPTIONS -->
-  <section class="screen" id="screen-options">
+  <section class="screen panel" id="screen-options">
     <div class="card">
       <button class="nav-back" id="backFromOptions">← Back</button>
       <h2>Options</h2>
@@ -113,6 +113,17 @@
 
   <!-- DOCK / MAIN SCENE -->
   <section class="screen" id="screen-dock">
+    <nav class="menu-rail" id="menuRail" aria-label="Game menu">
+      <button class="rail-btn" id="railInventoryBtn" type="button">Inventory</button>
+      <button class="rail-btn" id="viewShopBtn" type="button">Shop</button>
+      <button class="rail-btn" id="viewEquipmentBtn" type="button">Equipment</button>
+      <button class="rail-btn" id="viewTrophyBtn" type="button">Trophies</button>
+      <button class="rail-btn" id="viewRecordsBtn" type="button">Records</button>
+      <button class="rail-btn" id="viewCollectionBtn" type="button">Species</button>
+      <button class="rail-btn" id="viewLogBtn" type="button">Log</button>
+      <button class="rail-btn" id="viewSkillsBtn" type="button">Skills</button>
+      <button class="rail-btn" id="viewChallengesBtn" type="button">Challenges</button>
+    </nav>
     <div class="scene" id="dockScene">
       <div class="sky-glow"></div>
       <div class="water-lines"></div>
@@ -124,12 +135,6 @@
       <div class="dock" id="dockPlayerWrap"><div class="dock-post"></div><div class="dock-post"></div><div class="dock-ladder"></div></div>
       <div class="cast-lure" id="castLure"></div>
       <div class="ripple" id="ripple"></div>
-      <aside class="catch-feed-panel" id="catchFeedPanel">
-        <div class="catch-feed-title">Recent catches</div>
-        <div class="catch-feed-list" id="catchFeedList">
-          <div class="catch-feed-empty">No catches yet.</div>
-        </div>
-      </aside>
       <div class="scene-storage-actions">
         <span class="scene-storage-count" id="sceneStorageCount">0 / 5</span>
         <button class="scene-inventory-btn" id="sceneInventoryBtn" type="button" title="Open inventory" aria-label="Open inventory">🎒</button>
@@ -142,6 +147,12 @@
         <button class="bait-buy-btn" id="buyMoreBaitBtn" type="button">Quick buy</button>
       </div>
     </div>
+    <aside class="catch-feed-panel" id="catchFeedPanel">
+      <div class="catch-feed-title">Recent catches</div>
+      <div class="catch-feed-list" id="catchFeedList">
+        <div class="catch-feed-empty">No catches yet.</div>
+      </div>
+    </aside>
     <div class="scene-caption">
       <span id="gearCaption">Casting…</span>
       
@@ -156,39 +167,29 @@
 
     <div class="section-heading">
       <h3>Bucket</h3>
-      <div class="nav-links">
-        <button class="icon-nav-btn" id="viewShopBtn"><span class="inb-icon">🛒</span>Tackle Shop</button>
-        <button class="icon-nav-btn" id="viewEquipmentBtn"><span class="inb-icon">🛠️</span>Equipment</button>
-        <button class="icon-nav-btn" id="viewTrophyBtn"><span class="inb-icon">🏆</span>Trophies</button>
-        <button class="icon-nav-btn" id="viewRecordsBtn"><span class="inb-icon">📈</span>Records</button>
-        <button class="icon-nav-btn" id="viewCollectionBtn"><span class="inb-icon">📖</span>Species</button>
-        <button class="icon-nav-btn" id="viewLogBtn"><span class="inb-icon">📜</span>Log</button>
-        <button class="icon-nav-btn" id="viewSkillsBtn"><span class="inb-icon">⭐</span>Skills</button>
-        <button class="icon-nav-btn" id="viewChallengesBtn"><span class="inb-icon">🎯</span>Challenges</button>
-      </div>
     </div>
     <div class="inv-strip" id="invStrip"><div class="inv-empty">Nothing caught yet — go fish!</div></div>
   </section>
 
   <!-- COLLECTION LOG -->
-  <section class="screen" id="screen-log">
-    <button class="nav-back" id="backFromLog">← Back to the dock</button>
+  <section class="screen panel" id="screen-log">
+    <button class="nav-back" id="backFromLog">✕ Close</button>
     <h2>Collection log</h2>
     <p class="intro-text" style="margin-bottom:0;">Rare curiosities pulled up while fishing, each tied to a species.</p>
     <div class="collection-grid" id="logGrid"></div>
   </section>
 
   <!-- CHALLENGES -->
-  <section class="screen" id="screen-challenges">
-    <button class="nav-back" id="backFromChallenges">← Back to the dock</button>
+  <section class="screen panel" id="screen-challenges">
+    <button class="nav-back" id="backFromChallenges">✕ Close</button>
     <h2>Challenges</h2>
     <p class="intro-text" style="margin-bottom:0;">Goals to chase as you play. Claim the coin reward once you've met one.</p>
     <div id="challengesList" style="margin-top:16px;"></div>
   </section>
 
   <!-- SKILLS -->
-  <section class="screen" id="screen-skills">
-    <button class="nav-back" id="backFromSkills">← Back to the dock</button>
+  <section class="screen panel" id="screen-skills">
+    <button class="nav-back" id="backFromSkills">✕ Close</button>
     <h2>Fishing skills</h2>
     <p class="intro-text" style="margin-bottom:0;">Every fish has its own proficiency from 1–99. The more you catch of a species, the faster you can land that species.</p>
     <div class="skills-summary" id="skillsSummary"></div>
@@ -196,16 +197,16 @@
   </section>
 
   <!-- COLLECTION -->
-  <section class="screen" id="screen-collection">
-    <button class="nav-back" id="backFromCollection">← Back to the dock</button>
+  <section class="screen panel" id="screen-collection">
+    <button class="nav-back" id="backFromCollection">✕ Close</button>
     <h2>Your collection</h2>
     <p class="intro-text" style="margin-bottom:0;">Species you've hooked, plus what's still locked by rarity or fishing level.</p>
     <div class="collection-grid" id="collectionGrid"></div>
   </section>
 
   <!-- INVENTORY -->
-  <section class="screen" id="screen-inventory">
-    <button class="nav-back" id="backFromInventory">← Back to the dock</button>
+  <section class="screen panel" id="screen-inventory">
+    <button class="nav-back" id="backFromInventory">✕ Close</button>
     <h2>Inventory</h2>
     <p class="intro-text" style="margin-bottom:0;">Every fish waiting on you — sorted by rarity. Sell for coins scaled by fish rarity and catch quality, or keep the best ones as trophies.</p>
     <div class="inv-toolbar">
@@ -216,16 +217,16 @@
   </section>
 
   <!-- TROPHY ROOM -->
-  <section class="screen" id="screen-trophy">
-    <button class="nav-back" id="backFromTrophy">← Back to the dock</button>
+  <section class="screen panel" id="screen-trophy">
+    <button class="nav-back" id="backFromTrophy">✕ Close</button>
     <h2>Trophy room</h2>
     <p class="intro-text" style="margin-bottom:0;">Fish you chose to keep instead of selling. They're off the market for good — unless you change your mind.</p>
     <div class="trophy-grid" id="trophyGrid"></div>
   </section>
 
   <!-- RECORDS -->
-  <section class="screen" id="screen-records">
-    <button class="nav-back" id="backFromRecords">← Back to the dock</button>
+  <section class="screen panel" id="screen-records">
+    <button class="nav-back" id="backFromRecords">✕ Close</button>
     <h2>Records</h2>
     <p class="intro-text" style="margin-bottom:0;">Your rarest catch ever, plus your personal best star rating per species.</p>
     <div id="recordsHero"></div>
@@ -233,8 +234,8 @@
   </section>
 
   <!-- TACKLE SHOP -->
-  <section class="screen" id="screen-shop">
-    <button class="nav-back" id="backFromShop">← Back to the dock</button>
+  <section class="screen panel" id="screen-shop">
+    <button class="nav-back" id="backFromShop">✕ Close</button>
     <h2>Tackle shop</h2>
     <p class="intro-text" style="margin-bottom:20px;">Tune your setup, expand storage, and customize your angler.</p>
     <div class="shop-tabs" role="tablist" aria-label="Shop category">
@@ -247,8 +248,8 @@
   </section>
 
   <!-- OWNED EQUIPMENT -->
-  <section class="screen" id="screen-equipment">
-    <button class="nav-back" id="backFromEquipment">← Back to the dock</button>
+  <section class="screen panel" id="screen-equipment">
+    <button class="nav-back" id="backFromEquipment">✕ Close</button>
     <h2>Equipment</h2>
     <p class="intro-text" style="margin-bottom:0;">Only gear you own is shown here. Equip a setup to target its species.</p>
     <div class="equipment-list" id="ownedEquipmentList"></div>
@@ -256,6 +257,7 @@
 
 </div>
 
+<div class="panel-backdrop" id="panelBackdrop"></div>
 <div class="toast" id="toast"></div>
 <div class="coin-pop" id="coinPop">+0 ⛃</div>
 

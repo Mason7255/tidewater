@@ -93,8 +93,16 @@ export function shade(hex, percent){
 }
 
 export function showScreen(id){
+  var target = document.getElementById(id);
+  var topbar = document.getElementById('topbar');
+  var inGame = !!topbar && topbar.style.display !== 'none';
+  var asSheet = inGame && target.classList.contains('panel');
   var screens = document.querySelectorAll('.screen');
   for(var i=0;i<screens.length;i++){ screens[i].classList.remove('active'); }
-  document.getElementById(id).classList.add('active');
+  if(asSheet) document.getElementById('screen-dock').classList.add('active');
+  target.classList.add('active');
+  if(asSheet) target.scrollTop = 0;
+  document.body.classList.toggle('sheet-open', asSheet);
 }
-
+document.getElementById('panelBackdrop').addEventListener('click', function(){ showScreen('screen-dock'); });
+document.getElementById('railInventoryBtn').addEventListener('click', function(){ document.getElementById('sceneInventoryBtn').click(); });

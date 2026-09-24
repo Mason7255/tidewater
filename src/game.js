@@ -262,33 +262,66 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
     if(screen) screen.innerHTML = '';
   }, leveledUp ? 5200 : 2700);
 }
+var resumeAfterRareCard = false;
+function rareLayer(){
+  var layer = document.getElementById('rareFeedbackLayer');
+  if(!layer){ layer = document.createElement('div'); layer.id = 'rareFeedbackLayer'; document.body.appendChild(layer); }
+  return layer;
+}
+// Big-catch cards stay up until the player closes them; extra cards queue behind the first.
+function dismissRareCard(card){
+  card.remove();
+  var layer = document.getElementById('rareFeedbackLayer');
+  if(resumeAfterRareCard && !(layer && layer.querySelector('.rare-persist'))){
+    resumeAfterRareCard = false;
+    startAutoFish();
+  }
+}
 export function showMegaRareFeedback(item, fish){
-  var layer=document.getElementById('rareFeedbackLayer');
-  if(!layer){ layer=document.createElement('div'); layer.id='rareFeedbackLayer'; document.body.appendChild(layer); }
-  var reveal=document.createElement('div');
-  reveal.className='mega-rare-reveal';
-  reveal.innerHTML='<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">MEGA RARE FIND</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">Found while fishing for '+fish.name+'</div>';
+  var layer = rareLayer();
+  var reveal = document.createElement('div');
+  reveal.className = 'mega-rare-reveal rare-persist';
+  reveal.innerHTML = '<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">MEGA RARE FIND</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">Found while fishing for '+fish.name+'</div>'+
+    '<div class="rare-actions"><button class="btn-secondary rare-close" type="button">Nice!</button></div>';
   layer.appendChild(reveal);
   for(var i=0;i<28;i++){
-    var particle=document.createElement('span');
-    particle.className='mega-rare-particle';
-    particle.style.setProperty('--mega-x',Math.cos(Math.PI*2*i/28)*(90+Math.random()*150)+'px');
-    particle.style.setProperty('--mega-y',Math.sin(Math.PI*2*i/28)*(70+Math.random()*120)+'px');
-    particle.style.animationDelay=(Math.random()*.18)+'s';
+    var particle = document.createElement('span');
+    particle.className = 'mega-rare-particle';
+    particle.style.setProperty('--mega-x', Math.cos(Math.PI*2*i/28)*(90+Math.random()*150)+'px');
+    particle.style.setProperty('--mega-y', Math.sin(Math.PI*2*i/28)*(70+Math.random()*120)+'px');
+    particle.style.animationDelay = (Math.random()*.18)+'s';
     reveal.appendChild(particle);
   }
+  reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
   playMegaRareSound();
-  setTimeout(function(){ reveal.remove(); },3000);
 }
-export function showLegendaryFeedback(fish, stars, float){
-  var layer=document.getElementById('rareFeedbackLayer');
-  if(!layer){ layer=document.createElement('div'); layer.id='rareFeedbackLayer'; document.body.appendChild(layer); }
-  var reveal=document.createElement('div');
-  reveal.className='legendary-reveal';
-  var quality=qualityInfo(stars);
-  reveal.innerHTML='<div class="legendary-kicker">'+quality.label.toUpperCase()+' CATCH</div><div class="legendary-icon">'+fishDisplayEmoji(fish)+'</div><div class="legendary-name">'+fish.name+'</div><div class="legendary-stars">'+starsText(stars)+'</div><div class="legendary-details">Float '+formatFloat({float:float})+' · '+quality.label+' · Rarity '+floatRarityText({float:float})+'</div>';
+export function showLegendaryFeedback(fish, stars, float, catchId){
+  var layer = rareLayer();
+  var reveal = document.createElement('div');
+  reveal.className = 'legendary-reveal rare-persist';
+  var quality = qualityInfo(stars);
+  var entry = null;
+  for(var i=0;i<state.inventory.length;i++){ if(state.inventory[i].catchId === catchId){ entry = state.inventory[i]; break; } }
+  var price = entry ? sellPrice(fish, entry) : 0;
+  reveal.innerHTML = '<div class="legendary-kicker">'+quality.label.toUpperCase()+' CATCH</div><div class="legendary-icon">'+fishDisplayEmoji(fish)+'</div><div class="legendary-name">'+fish.name+'</div><div class="legendary-stars">'+starsText(stars)+'</div><div class="legendary-details">Float '+formatFloat({float:float})+' · '+quality.label+' · Rarity '+floatRarityText({float:float})+'</div>'+
+    (entry
+      ? '<div class="rare-actions"><button class="btn-secondary" data-act="trophy" data-soundless="true" type="button">🏆 Trophy</button><button class="btn-primary" data-act="sell" data-soundless="true" type="button">Sell '+price+' ⛃</button><button class="btn-secondary rare-close" data-act="keep" type="button">Keep in bucket</button></div>'
+      : '<div class="rare-actions"><button class="btn-secondary rare-close" data-act="keep" type="button">Close</button></div>');
   layer.appendChild(reveal);
-  setTimeout(function(){ reveal.remove(); },3000);
+  resumeAfterRareCard = true;
+  var sellArmed = false;
+  reveal.addEventListener('click', function(ev){
+    var btn = ev.target.closest ? ev.target.closest('button[data-act]') : null;
+    if(!btn) return;
+    var act = btn.getAttribute('data-act');
+    if(act === 'sell'){
+      if(stars >= 5 && !sellArmed){ sellArmed = true; btn.textContent = 'Tap again to sell'; return; }
+      sellRecentCatch(catchId);
+    } else if(act === 'trophy'){
+      trophyRecentCatch(catchId);
+    }
+    dismissRareCard(reveal);
+  });
 }
 export function animateFishToBucket(fish, stars){
   if(!animationsEnabled) return;
@@ -421,7 +454,7 @@ export function grantFish(fish, forcedQuality){
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
   showCatchFeedback(fish, stars, fl, fish.xp, leveledUp, afterLevel);
-  if(stars >= 4) showLegendaryFeedback(fish, stars, fl);
+  if(stars >= 4) showLegendaryFeedback(fish, stars, fl, newCatchId);
   playCatchSound(stars);
   if(leveledUp){
     playLevelSound();

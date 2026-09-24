@@ -548,3 +548,66 @@
   .challenge-progress-fill{ height:100%; background:linear-gradient(90deg,var(--teal),var(--gold)); border-radius:99px; }
   .challenge-meta{ font-size:10.5px; color:var(--silver); margin-top:5px; }
   .challenge-claim{ flex:0 0 auto; }
+
+
+  /* ================= Retro menu rail + sheet panels + persistent catch cards ================= */
+  :root{
+    --retro-yellow:#FFD84A; --retro-font:'Press Start 2P','Courier New',monospace;
+    --panel:#102033; --panel2:rgba(255,255,255,.06); --line:rgba(255,255,255,.14); --muted:var(--silver); --cream:var(--foam);
+  }
+  button,.swatch,.hat-opt,.catch-feed-row{ touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+
+  /* Dock: menu on the left, scene + info on the right */
+  #screen-dock:not(.active){ display:none; }
+  #screen-dock.active{ display:grid; grid-template-columns:116px minmax(0,1fr); column-gap:10px; align-items:start; }
+  #screen-dock > *{ grid-column:2; min-width:0; }
+  #screen-dock > .menu-rail{ grid-column:1; grid-row:1 / span 6; }
+  #screen-dock > .catch-feed-panel{ position:relative; left:auto; right:auto; top:auto; width:100%; max-height:none; margin:10px 0 0; }
+  @media (max-width:700px){
+    .fish-efficiency{ left:auto; right:8px; top:10px; transform:none; width:min(118px,52%); }
+    .bait-corner{ left:8px; top:10px; }
+    .scene-storage-actions{ right:8px; bottom:8px; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+  }
+
+  .menu-rail{ position:sticky; top:8px; display:flex; flex-direction:column; gap:8px; max-height:calc(100dvh - 16px); overflow-y:auto; }
+  .rail-btn{
+    font-family:var(--retro-font); font-size:9px; line-height:1.2; text-transform:uppercase; text-align:left;
+    color:var(--retro-yellow); text-shadow:2px 2px 0 #000;
+    background:rgba(9,19,31,.78); border:2px solid rgba(255,216,74,.4); border-radius:6px;
+    min-height:44px; padding:0 8px; display:flex; align-items:center; flex:0 0 auto;
+  }
+  .rail-btn:active{ background:var(--retro-yellow); color:#1a1300; text-shadow:none; transform:translate(1px,1px); }
+  @media (hover:hover){ .rail-btn:hover{ border-color:var(--retro-yellow); } }
+  @media (hover:none){ .swatch:hover{ transform:none; } .catch-feed-row:hover{ background:rgba(255,255,255,.05); } }
+
+  /* Sub menus: bottom sheet over the dock while in-game */
+  .panel-backdrop{ display:none; position:fixed; inset:0; background:rgba(3,9,15,.72); z-index:58; }
+  body.sheet-open{ overflow:hidden; }
+  body.sheet-open .panel-backdrop{ display:block; }
+  body.sheet-open .screen.panel.active{
+    position:fixed; z-index:60; left:0; right:0; bottom:0; top:max(56px, 8dvh); margin:0 auto; width:min(100%, 640px);
+    overflow-y:auto; overscroll-behavior:contain; -webkit-overflow-scrolling:touch;
+    padding:0 16px calc(28px + env(safe-area-inset-bottom,0px));
+    background:linear-gradient(180deg,#14484B 0%,#0C2F31 100%);
+    border:2px solid rgba(255,216,74,.4); border-bottom:none; border-radius:22px 22px 0 0;
+    animation:sheetUp .28s ease;
+  }
+  @keyframes sheetUp{ from{ transform:translateY(32px); opacity:0; } to{ transform:none; opacity:1; } }
+  @media (prefers-reduced-motion: reduce){ body.sheet-open .screen.panel.active{ animation:none; } }
+  body.sheet-open .screen.panel .card{ background:none; border:none; padding:0; }
+  body.sheet-open .screen.panel .nav-back{
+    position:sticky; top:0; z-index:6; width:100%; min-height:48px; margin:0 0 10px; padding:14px 0 10px;
+    background:#14484B; color:var(--retro-yellow); font-family:var(--retro-font); font-size:10px; text-shadow:2px 2px 0 #000; justify-content:flex-start;
+  }
+  body.sheet-open .screen.panel h2{ font-family:var(--retro-font); font-size:15px; line-height:1.5; color:var(--retro-yellow); text-shadow:2px 2px 0 #000; }
+  body.sheet-open .inventory-list{ max-height:none; overflow:visible; }
+  body.sheet-open .inventory-rarity-header, body.sheet-open .shop-tabs{ top:48px; background:#14484B; }
+
+  /* Big-catch cards (4-5 star + mega rare): stay until closed */
+  #rareFeedbackLayer:has(.rare-persist){ pointer-events:auto; background:rgba(3,9,15,.68); }
+  .rare-persist{ pointer-events:auto; width:min(320px,88vw); }
+  #rareFeedbackLayer > .rare-persist ~ .rare-persist{ display:none; }
+  .mega-rare-spark,.mega-rare-particle{ pointer-events:none; }
+  .rare-actions{ position:relative; z-index:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
+  .rare-actions button{ margin:0; width:100%; min-height:44px; padding:10px 8px; font-size:13px; box-shadow:none; }
+  .rare-actions .rare-close{ grid-column:1 / -1; }
