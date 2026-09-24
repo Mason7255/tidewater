@@ -40,7 +40,7 @@ export function makeFreshState(){
     coins:0, gear:'shrimp_net', ownedGear:startingOwnedEquipment(),
     baitCounts:makeBaitCounts(),
     selectedBait:'shrimp_bait',
-    upgrades:{}, storageTier:0, xp:0, caught:{}, proficiencies:{}, inventory:[],
+    upgrades:{}, xp:0, caught:{}, proficiencies:{}, inventory:[],
     records:{ bestFloat:1, bestStars:0, bestFishId:null, bestCatchId:null, perSpeciesFloat:{}, perSpeciesStars:{}, perSpeciesCatchId:{} }, recentCatches:[], catchHistory:[],
     collectionLog:{}, claimedChallenges:{}, challengeTiers:{},
     soundEnabled:true, volume:40
@@ -245,7 +245,6 @@ export function renderSlots(justSavedSlot){
         }
       } else if(info){
         if(loadSlot(n)) showToast('Loaded ' + info.name + '.');
-        else showToast('Could not load Slot '+n+'. Check the browser console for details.');
       } else {
         resetToFreshGame(n);
       }
@@ -281,6 +280,6 @@ document.addEventListener('click', function(ev){
 
 export var catchInspectModal = document.getElementById('catchInspect');
 if(catchInspectModal){
-  catchInspectModal.addEventListener('click', function(e){ if(e.target === catchInspectModal) closeCatchInspect(); });
+  catchInspectModal.addEventListener('click', function(e){ if(e.target === catchInspectModal && !catchInspectModal.classList.contains('locked')) closeCatchInspect(); });
 }
 

@@ -12,12 +12,12 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playCatchSound, playCollectionSound, playLevelSound, playMegaRareSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
-import { BASE_CAST_MS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, baitById, baitForFish, equipmentById, equipmentForFish, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
+import { playCatchSound, playCollectionSound, playLevelSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
+import { BASE_CAST_MS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, baitById, baitForFish, equipmentById, equipmentForFish, levelForXp, logItemForFish, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
-import { CATCH_HISTORY_LIMIT, fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, nextCatchId, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, qualityInfo, rollQuality, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
+import { CATCH_HISTORY_LIMIT, addProficiencyXp, fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, nextCatchId, proficiencySpeedMultiplier, qualityInfo, rollQuality, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
 export var swatchRow = document.getElementById('swatchRow');
 export var hatRow = document.getElementById('hatRow');
@@ -67,15 +67,6 @@ export function initCharacterCreationUI(){
 // ---------- HUD ----------
 export function totalFishCaught(){ var t=0; for(var k in state.caught){ if(state.caught.hasOwnProperty(k)) t+=state.caught[k]; } return t; }
 export function playerLevel(){ return levelForXp(state.xp); }
-var STORAGE_NAMES = ['Pockets','Snack tray','Wobbly basket','Fancy cooler','Fish tote','Rolling fish cart','Tiny fish wagon','Dockside locker','Suspiciously large basket','Portable fish shed','Harbor locker','Angler trunk','Boat box','Captain\'s chest','Sea pantry','Floating fish closet','Harbor warehouse','Dock warehouse','Fish depot','Aquatic vault'];
-export function storageUnlockedTier(){ return Math.floor((playerLevel()-1)/5); }
-export function storageUpgradeLevel(){ return Math.min(Math.max(0,Number(state.storageTier)||0),storageUnlockedTier()); }
-export function storageCapacity(){ return 5 + storageUpgradeLevel()*5; }
-export function storageNameForTier(tier){ return STORAGE_NAMES[Math.min(Math.max(0,tier||0),STORAGE_NAMES.length-1)]; }
-export function storageName(){ return storageNameForTier(storageUpgradeLevel()); }
-export function storageCostForTier(tier){ return 100 * Math.pow(tier+1,2); }
-export function storageUpgradeCost(){ return storageCostForTier(storageUpgradeLevel()); }
-export function keptFishCount(){ return state.inventory.filter(function(entry){ return entry.status === 'kept'; }).length; }
 export function currentEquipment(){
   // The equipped gear is authoritative. Never silently substitute Shrimp gear.
   return equipmentById(state.gear) || null;
@@ -98,23 +89,6 @@ export function updateHud(){
   var baitCountEl = document.getElementById('baitCornerCount');
   baitCountEl.textContent = baitCount > 0 ? baitCount : '0';
   baitCountEl.classList.toggle('low', baitCount <= 0);
-  var storageCountEl = document.getElementById('sceneStorageCount');
-  if(storageCountEl) storageCountEl.textContent = keptFishCount()+' / '+storageCapacity();
-  var storageProp = document.getElementById('dockBucket');
-  if(storageProp){
-    storageProp.className = 'dock-bucket storage-tier-'+Math.min(storageUpgradeLevel(),19);
-    storageProp.title = storageName();
-  }
-  var efficiencyLabel = document.getElementById('fishEfficiencyLabel');
-  var efficiencyFill = document.getElementById('fishEfficiencyFill');
-  var efficiencyFish = fishById((currentEquipment() || {}).fishId);
-  if(efficiencyFish && efficiencyLabel && efficiencyFill){
-    var efficiencyLevel = proficiencyLevel(efficiencyFish.id);
-    var efficiencyProgress = proficiencyProgress(efficiencyFish.id);
-    var efficiency = Math.round((1 - proficiencySpeedMultiplier(efficiencyFish.id))*100);
-    efficiencyLabel.textContent = efficiencyFish.name+' efficiency · Lv '+efficiencyLevel+' · '+(efficiency ? efficiency+'% faster' : 'base speed');
-    efficiencyFill.style.width = efficiencyProgress.pct+'%';
-  }
   document.getElementById('levelNum').textContent = lvl;
 
   var xpAtLevel = xpTable[lvl];
@@ -262,76 +236,6 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
     if(screen) screen.innerHTML = '';
   }, leveledUp ? 5200 : 2700);
 }
-export function showMegaRareFeedback(item, fish){
-  var layer=document.getElementById('rareFeedbackLayer');
-  if(!layer){ layer=document.createElement('div'); layer.id='rareFeedbackLayer'; document.body.appendChild(layer); }
-  var reveal=document.createElement('div');
-  reveal.className='mega-rare-reveal';
-  reveal.innerHTML='<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">MEGA RARE FIND</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">Found while fishing for '+fish.name+'</div>';
-  layer.appendChild(reveal);
-  for(var i=0;i<28;i++){
-    var particle=document.createElement('span');
-    particle.className='mega-rare-particle';
-    particle.style.setProperty('--mega-x',Math.cos(Math.PI*2*i/28)*(90+Math.random()*150)+'px');
-    particle.style.setProperty('--mega-y',Math.sin(Math.PI*2*i/28)*(70+Math.random()*120)+'px');
-    particle.style.animationDelay=(Math.random()*.18)+'s';
-    reveal.appendChild(particle);
-  }
-  playMegaRareSound();
-  setTimeout(function(){ reveal.remove(); },3000);
-}
-export function showLegendaryFeedback(fish, stars, float){
-  var layer=document.getElementById('rareFeedbackLayer');
-  if(!layer){ layer=document.createElement('div'); layer.id='rareFeedbackLayer'; document.body.appendChild(layer); }
-  var reveal=document.createElement('div');
-  reveal.className='legendary-reveal';
-  var quality=qualityInfo(stars);
-  reveal.innerHTML='<div class="legendary-kicker">'+quality.label.toUpperCase()+' CATCH</div><div class="legendary-icon">'+fishDisplayEmoji(fish)+'</div><div class="legendary-name">'+fish.name+'</div><div class="legendary-stars">'+starsText(stars)+'</div><div class="legendary-details">Float '+formatFloat({float:float})+' · '+quality.label+' · Rarity '+floatRarityText({float:float})+'</div>';
-  layer.appendChild(reveal);
-  setTimeout(function(){ reveal.remove(); },3000);
-}
-export function animateFishToBucket(fish, stars){
-  if(!animationsEnabled) return;
-  var scene=document.getElementById('dockScene'), bucket=document.getElementById('dockBucket');
-  if(!scene || !bucket) return;
-  var sceneRect=scene.getBoundingClientRect(), bucketRect=bucket.getBoundingClientRect();
-  var sourceRect={left:sceneRect.left+sceneRect.width/2+72, top:sceneRect.top+sceneRect.height-64, width:6, height:6};
-  var particleColors={
-    1:['#9AA0A6'],
-    2:['#58B86A','#9FE08C'],
-    3:['#4A90E2','#8DEBFF','#FFFFFF'],
-    4:['#A05BEA','#D6A6FF','#8DEBFF','#FFFFFF'],
-    5:['#D9A441','#FFE48A','#FFFFFF','#FF9D7A','#8DEBFF']
-  }[Math.max(1,Math.min(5,stars||1))];
-  var particleCount=stars>=5 ? 18 : (stars>=4 ? 13 : (stars>=3 ? 9 : (stars>=2 ? 6 : 4)));
-  for(var i=0;i<particleCount;i++){
-    var particle=document.createElement('span');
-    particle.className='catch-flight-particle';
-    particle.style.left=(sourceRect.left+sourceRect.width/2-3)+'px';
-    particle.style.top=(sourceRect.top+sourceRect.height/2-3)+'px';
-    particle.style.background=particleColors[i%particleColors.length];
-    var angle=(Math.PI*2*i/particleCount)+(Math.random()*.4-.2), distance=18+Math.random()*26;
-    particle.style.setProperty('--particle-x',Math.cos(angle)*distance+'px');
-    particle.style.setProperty('--particle-y',Math.sin(angle)*distance+'px');
-    particle.style.animationDelay=(Math.random()*.08)+'s';
-    document.body.appendChild(particle);
-    setTimeout(function(el){ return function(){ el.remove(); }; }(particle),520);
-  }
-  var fishEl=document.createElement('span');
-  fishEl.className='catch-fish-flight';
-  fishEl.textContent=fishDisplayEmoji(fish);
-  fishEl.style.left=(sourceRect.left+sourceRect.width/2-10)+'px';
-  fishEl.style.top=(sourceRect.top+sourceRect.height/2-10)+'px';
-  document.body.appendChild(fishEl);
-  var endX=bucketRect.left+bucketRect.width/2-10, endY=bucketRect.top+bucketRect.height/2-10;
-  var midX=(endX-parseFloat(fishEl.style.left))*.5, midY=(endY-parseFloat(fishEl.style.top))*.5-70;
-  var flight=fishEl.animate([
-    {transform:'translate(0,0) rotate(-18deg) scale(.8)',opacity:1},
-    {transform:'translate('+midX+'px,'+(midY-40)+'px) rotate(18deg) scale(1.2)',opacity:1,offset:.45},
-    {transform:'translate('+(endX-parseFloat(fishEl.style.left))+'px,'+(endY-parseFloat(fishEl.style.top))+'px) rotate(360deg) scale(.8)',opacity:0}
-  ],{duration:1500,easing:'cubic-bezier(.2,.8,.35,1)'});
-  flight.onfinish=function(){ fishEl.remove(); bucket.classList.remove('bucket-hit'); void bucket.offsetWidth; bucket.classList.add('bucket-hit'); };
-}
 
 // ---------- Catch rolling ----------
 export function eligibleFish(){
@@ -357,12 +261,13 @@ export function castDurationMs(fish){
   return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp'));
 }
 
-export function grantFish(fish, forcedQuality){
+export function grantFish(fish){
   var beforeLevel = playerLevel();
-  var quality = forcedQuality || rollQuality();
+  var quality = rollQuality();
   var stars = quality.stars;
   var fl = quality.float;
   state.xp += fish.xp;
+  addProficiencyXp(fish.id, fish.xp);
   state.caught[fish.id] = (state.caught[fish.id]||0) + 1;
   var newCatchId = nextCatchId();
   state.inventory.unshift({catchId: newCatchId, fishId: fish.id, stars: stars, float: fl, status:'kept'});
@@ -394,20 +299,9 @@ export function grantFish(fish, forcedQuality){
     state.collectionLog[logItem.id] = (state.collectionLog[logItem.id]||0) + 1;
     setTimeout(function(){
       playCollectionSound();
-      showMegaRareFeedback(logItem, fish);
       showToast((isNewLogItem ? 'New collection log item! ' : 'Found another ') + logItem.icon + ' ' + logItem.name + '.');
     }, isNewLogItem ? 1400 : 1100);
   }
-  mythicLogItemsForFish(fish.id).forEach(function(mythicItem){
-    if(Math.random() >= mythicItem.chance) return;
-    var isNewMythic = !state.collectionLog[mythicItem.id];
-    state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
-    setTimeout(function(){
-      playCollectionSound();
-      showMegaRareFeedback(mythicItem, fish);
-      showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
-    }, isNewMythic ? 1400 : 1100);
-  });
 
   saveState();
   updateHud(); updateGearCaption(); renderInventoryStrip(); renderBaitChips(); renderCatchFeed();
@@ -421,7 +315,6 @@ export function grantFish(fish, forcedQuality){
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
   showCatchFeedback(fish, stars, fl, fish.xp, leveledUp, afterLevel);
-  if(stars >= 4) showLegendaryFeedback(fish, stars, fl);
   playCatchSound(stars);
   if(leveledUp){
     playLevelSound();
@@ -432,6 +325,7 @@ export function grantFish(fish, forcedQuality){
   }
   return {leveledUp: leveledUp, stars: stars, float: fl};
 }
+
 // ---------- Recent catch feed ----------
 export function refreshRecentCatches(){
   // Build a lookup of kept catchIds once (O(inventory)) instead of calling
@@ -442,13 +336,9 @@ export function refreshRecentCatches(){
     var e = state.inventory[i];
     if(e.status === 'kept') keptIds[e.catchId] = true;
   }
-  var history = state.catchHistory || [], recent = [], seenIds = Object.create(null);
-  for(var j=0;j<history.length && recent.length<3;j++){
-    var catchId = history[j].catchId;
-    if(keptIds[catchId] && !seenIds[catchId]){
-      seenIds[catchId] = true;
-      recent.push(history[j]);
-    }
+  var history = state.catchHistory || [], recent = [];
+  for(var j=0;j<history.length && recent.length<5;j++){
+    if(keptIds[history[j].catchId]) recent.push(history[j]);
   }
   state.recentCatches = recent;
 }
@@ -485,11 +375,11 @@ export function removeRecentCatch(catchId){
   renderCatchFeed();
 }
 
-document.getElementById('sellRecentBtn').addEventListener('click', sellAllKept);
-
+var resumeFishingOnClose = false;
 export function closeCatchInspect(){
   var modal = document.getElementById('catchInspect');
-  if(modal) modal.classList.remove('active');
+  if(modal){ modal.classList.remove('active'); modal.classList.remove('locked'); }
+  if(resumeFishingOnClose){ resumeFishingOnClose = false; startAutoFish(); }
 }
 
 export function inspectRecentCatch(rec, exceptional){
@@ -507,7 +397,9 @@ export function inspectRecentCatch(rec, exceptional){
     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'+
     '<button class="btn-secondary" id="inspectTrophyBtn">🏆 Trophy</button>'+
     '<button class="btn-primary" id="inspectSellBtn" style="margin-top:0;">Sell '+price+' ⛃</button></div>'+
-    '<button class="btn-secondary" id="closeCatchInspect" style="width:100%;margin-top:10px;">Keep</button>';
+    '<button class="btn-secondary" id="closeCatchInspect" style="width:100%;margin-top:10px;">'+(exceptional ? 'Keep in bucket' : 'Keep')+'</button>';
+  modal.classList.toggle('locked', !!exceptional);
+  if(exceptional) resumeFishingOnClose = true;
   modal.classList.add('active');
   document.getElementById('closeCatchInspect').addEventListener('click',closeCatchInspect);
   document.getElementById('inspectSellBtn').addEventListener('click',function(){sellRecentCatch(rec.catchId);});
@@ -527,7 +419,7 @@ export function sellRecentCatch(catchId){
   saveState();
   updateHud();
   showCoinGain(price);
-  playSellSound(starsForEntry(entry));
+  playSellSound();
   renderInventoryStrip();
   renderInventoryList();
   closeCatchInspect();
@@ -668,36 +560,7 @@ export var autoFishProgressFill = document.getElementById('autoFishProgressFill'
 export var fishingSessionId = 0;
 export var activeCastId = 0;
 export var awardedCastKey = '';
-export var lastAwardedCastKey = '';
 export var castActive = false;
-export var fishingLockTimer = null;
-var fishingOwnerId = Math.random().toString(36).slice(2) + Date.now().toString(36);
-var FISHING_LOCK_KEY = 'tidewater_fishing_lock';
-var FISHING_LOCK_MS = 3000;
-
-function readFishingLock(){
-  try{ return JSON.parse(localStorage.getItem(FISHING_LOCK_KEY) || 'null'); }catch(e){ return null; }
-}
-function ownsFishingLock(){
-  var lock = readFishingLock();
-  return !!lock && lock.owner === fishingOwnerId && Date.now() - lock.time < FISHING_LOCK_MS;
-}
-function acquireFishingLock(){
-  var lock = readFishingLock();
-  if(lock && lock.owner !== fishingOwnerId && Date.now() - lock.time < FISHING_LOCK_MS) return false;
-  try{ localStorage.setItem(FISHING_LOCK_KEY, JSON.stringify({owner:fishingOwnerId,time:Date.now()})); }catch(e){ return true; }
-  return ownsFishingLock();
-}
-function refreshFishingLock(){
-  if(!autoFishing || !ownsFishingLock()) return;
-  try{ localStorage.setItem(FISHING_LOCK_KEY, JSON.stringify({owner:fishingOwnerId,time:Date.now()})); }catch(e){}
-}
-function releaseFishingLock(){
-  clearInterval(fishingLockTimer);
-  fishingLockTimer = null;
-  if(!ownsFishingLock()) return;
-  try{ localStorage.removeItem(FISHING_LOCK_KEY); }catch(e){}
-}
 
 export function clearFishingTimer(){
   if(autoFishTimer !== null){
@@ -710,17 +573,10 @@ export function startAutoFish(){
   if(autoFishing) return;
   var eq = currentEquipment();
   if(!eq) return;
-  if(!acquireFishingLock()){
-    autoFishStatusText.textContent = 'Paused — another game window is fishing';
-    return;
-  }
   autoFishing = true;
   fishingSessionId++;
   awardedCastKey = '';
-  lastAwardedCastKey = '';
   castActive = false;
-  clearInterval(fishingLockTimer);
-  fishingLockTimer = setInterval(refreshFishingLock, 1000);
   updateGearCaption();
   queueNextCast(fishingSessionId, 0);
 }
@@ -732,7 +588,6 @@ export function stopAutoFish(){
   awardedCastKey = '';
   castActive = false;
   clearFishingTimer();
-  releaseFishingLock();
   parkRodIdle();
   if(autoFishProgressFill){
     autoFishProgressFill.style.transition = 'none';
@@ -741,28 +596,18 @@ export function stopAutoFish(){
   updateGearCaption();
 }
 
-// The dedicated topbar control toggles auto-fishing. Ordinary scene clicks
-// remain available for inspecting catches and using dock controls.
-export function toggleFishingPause(){
+// Clicking the fishing scene toggles auto-fishing. A click while fishing
+// pauses immediately; the next click resumes a fresh cast.
+document.getElementById('dockScene').addEventListener('click', function(){
   if(autoFishing || castActive){
     stopAutoFish();
-    autoFishStatusText.textContent = 'Paused — press play to resume';
+    autoFishStatusText.textContent = 'Paused — click to resume';
     autoFishCountText.textContent = '';
-    var pauseBtn = document.getElementById('togglePauseBtn');
-    pauseBtn.textContent = '▶';
-    pauseBtn.title = 'Resume fishing';
-    pauseBtn.setAttribute('aria-label','Resume fishing');
   } else {
     startAutoFish();
-    autoFishStatusText.textContent = 'Casting…';
-    var resumeBtn = document.getElementById('togglePauseBtn');
-    resumeBtn.textContent = '❚❚';
-    resumeBtn.title = 'Pause fishing';
-    resumeBtn.setAttribute('aria-label','Pause fishing');
   }
   startWaterAmbience();
-}
-document.getElementById('togglePauseBtn').addEventListener('click', toggleFishingPause);
+});
 
 export function queueNextCast(sessionId, delay){
   clearFishingTimer();
@@ -775,19 +620,6 @@ export function queueNextCast(sessionId, delay){
 
 export function beginSingleCast(sessionId){
   if(!autoFishing || sessionId !== fishingSessionId) return;
-  if(!ownsFishingLock()){
-    stopAutoFish();
-    autoFishStatusText.textContent = 'Paused — another game window is fishing';
-    autoFishCountText.textContent = '';
-    return;
-  }
-  if(keptFishCount() >= storageCapacity()){
-    stopAutoFish();
-    autoFishStatusText.textContent = storageName()+' full — sell fish to keep fishing';
-    autoFishCountText.textContent = keptFishCount()+' / '+storageCapacity();
-    showToast(storageName()+' full. Sell a fish or reach Fishing Lv '+(playerLevel()+1)+'.');
-    return;
-  }
 
   // There can never be two active casts.  A new cast is only created after
   // the previous cast has already awarded its one fish.
@@ -831,16 +663,13 @@ export function beginSingleCast(sessionId){
 
     if(!autoFishing || sessionId !== fishingSessionId) return;
     if(awardedCastKey !== castKey) return;
-    if(lastAwardedCastKey === castKey) return;
 
     // Consume the token BEFORE grantFish(). If anything inside grantFish()
     // causes another callback synchronously, it still cannot award this cast.
-    lastAwardedCastKey = castKey;
     awardedCastKey = '';
     castActive = false;
 
     var result = grantFish(fish);
-    animateFishToBucket(fish, result.stars);
     var q = qualityInfo(result.stars);
     autoFishStatusText.innerHTML = 'Caught a ' + fish.name + ' <span style="color:'+q.color+';">('+starsText(result.stars)+' · '+q.label+')</span>';
     autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+fish.xp+' xp</span>';
@@ -852,6 +681,10 @@ export function beginSingleCast(sessionId){
       activeCastId++;
       clearFishingTimer();
       parkRodIdle();
+      setTimeout(function(){
+        var latest = state.catchHistory && state.catchHistory[0];
+        if(latest) inspectRecentCatch(latest, true);
+      }, 180);
       return;
     }
 
