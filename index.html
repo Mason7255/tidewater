@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tidewater — Fishing Prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Manrope:wght@400;500;600;700;800&family=Press+Start+2P&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/src/style.css">
+</head>
+<body>
+<div id="app">
+
+  <div class="topbar" id="topbar" style="display:none;">
+    <div class="brand">
+      <span class="brand-mark">🎣</span>
+      <span class="brand-name">Tidewater</span>
+    </div>
+    <div class="stat-row">
+      <div class="stat-pill level" id="levelPill">Lv <span id="levelNum">1</span></div>
+      <div class="stat-pill">🐟 <span id="fishCount">0</span></div>
+      <div class="stat-pill">⛃ <span id="coinCount">0</span></div>
+      <div class="stat-pill" id="saveStatusPill" title="">●</div>
+      <button class="stat-pill pause-pill" id="togglePauseBtn" type="button" title="Pause fishing" aria-label="Pause fishing">❚❚</button>
+      <button class="stat-pill menu-pill" id="topbarMenuBtn" type="button" title="Menu">⚙️</button>
+    </div>
+  </div>
+  <div class="xp-bar-wrap" id="xpBarWrap" style="display:none;">
+    <div class="xp-bar-label"><span>Fishing XP</span><span id="xpLabel">0 / 83</span></div>
+    <div class="xp-bar-track"><div class="xp-bar-fill" id="xpBarFill" style="width:0%;"></div></div>
+  </div>
+
+  <!-- START MENU -->
+  <section class="screen active" id="screen-menu">
+    <div class="card menu-card">
+      <div class="menu-logo">🎣</div>
+      <div class="menu-title">Tidewater</div>
+      <p class="menu-subtitle">Cast a line, build your collection, chase five-star catches, and see how far you can fish.</p>
+      <div class="menu-buttons">
+        <button class="btn-primary" id="newGameBtn">New Game</button>
+        <button class="btn-secondary" id="loadGameBtn">Load Game</button>
+        <button class="btn-secondary" id="optionsBtn">Options</button>
+      </div>
+      <div class="menu-save-note" id="menuSaveNote"></div>
+    </div>
+  </section>
+
+  <!-- SAVE / LOAD SLOTS -->
+  <section class="screen" id="screen-slots">
+    <div class="card">
+      <button class="nav-back" id="backFromSlots">← Back</button>
+      <h2 id="slotsTitle">Load game</h2>
+      <p class="intro-text" id="slotsIntro" style="margin-bottom:0;">Choose a save slot.</p>
+      <div class="slots-list" id="slotsList" style="margin-top:16px;"></div>
+    </div>
+  </section>
+
+  <!-- OPTIONS -->
+  <section class="screen" id="screen-options">
+    <div class="card">
+      <button class="nav-back" id="backFromOptions">← Back</button>
+      <h2>Options</h2>
+      <p class="intro-text">Game settings and save data.</p>
+      <div class="option-row">
+        <div><div class="option-title">Animations</div><div class="option-desc">Fishing, catch, XP, and level-up effects.</div></div>
+        <input type="checkbox" id="animationsCheck" checked>
+      </div>
+      <div class="option-row">
+        <div><div class="option-title">Sound effects</div><div class="option-desc">8-bit beeps, boops, catch sounds, shop sounds, and dock ambience.</div></div>
+        <input type="checkbox" id="soundCheck" checked>
+      </div>
+      <div class="option-row">
+        <div><div class="option-title">Volume</div><div class="option-desc">Overall sound effect volume.</div></div>
+        <input type="range" id="volumeSlider" min="0" max="100" value="40" style="width:130px;">
+      </div>
+      <div class="option-row">
+        <div><div class="option-title">Save game</div><div class="option-desc">Write your progress to one of three save slots.</div></div>
+        <button class="btn-tiny gold" id="openSaveBtn" style="white-space:normal;">Save game</button>
+      </div>
+      <div class="option-row">
+        <div><div class="option-title">Load game</div><div class="option-desc">Switch to a different save slot.</div></div>
+        <button class="btn-tiny ghost" id="openLoadFromOptionsBtn" style="white-space:normal;">Load game</button>
+      </div>
+      <div class="option-row">
+        <div><div class="option-title">Exit to title</div><div class="option-desc">Return to the title screen. Anything not saved to a slot will be lost.</div></div>
+        <button class="btn-tiny ghost" id="exitToTitleBtn" style="white-space:normal;">Exit to title</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CHARACTER CREATION -->
+  <section class="screen" id="screen-create">
+    <div class="card">
+      <h2>Who's casting the line?</h2>
+      <p class="intro-text">Set up your angler. This is just the first pass — outfits, hats and more will get deeper once the art style is locked in.</p>
+
+      <label class="field-label" for="nameInput">Name</label>
+      <input type="text" id="nameInput" placeholder="e.g. Wren" maxlength="16">
+
+      <label class="field-label">Outfit color</label>
+      <div class="swatch-row" id="swatchRow"></div>
+
+      <label class="field-label">Hat</label>
+      <div class="hat-row" id="hatRow"></div>
+
+      <div class="preview-wrap"><div id="previewPlayer"></div></div>
+
+      <button class="btn-primary" id="startBtn" disabled>Head to the dock</button>
+    </div>
+  </section>
+
+
+  <!-- DOCK / MAIN SCENE -->
+  <section class="screen" id="screen-dock">
+    <div class="scene" id="dockScene">
+      <div class="sky-glow"></div>
+      <div class="water-lines"></div>
+      <div class="fish-efficiency" id="fishEfficiency">
+        <div class="fish-efficiency-label" id="fishEfficiencyLabel">Fishing efficiency</div>
+        <div class="fish-efficiency-track"><div class="fish-efficiency-fill" id="fishEfficiencyFill"></div></div>
+      </div>
+      <div class="dock-bucket" id="dockBucket" aria-label="Fish bucket"></div>
+      <div class="dock" id="dockPlayerWrap"><div class="dock-post"></div><div class="dock-post"></div><div class="dock-ladder"></div></div>
+      <div class="cast-lure" id="castLure"></div>
+      <div class="ripple" id="ripple"></div>
+      <aside class="catch-feed-panel" id="catchFeedPanel">
+        <div class="catch-feed-title">Recent catches</div>
+        <div class="catch-feed-list" id="catchFeedList">
+          <div class="catch-feed-empty">No catches yet.</div>
+        </div>
+      </aside>
+      <div class="scene-storage-actions">
+        <span class="scene-storage-count" id="sceneStorageCount">0 / 5</span>
+        <button class="scene-inventory-btn" id="sceneInventoryBtn" type="button" title="Open inventory" aria-label="Open inventory">🎒</button>
+        <button class="catch-sell-recent" id="sellRecentBtn" type="button">Quick sell all</button>
+      </div>
+      <div class="bait-corner" id="baitCorner">
+        <div class="bait-corner-icon" id="baitCornerIcon">🪱</div>
+        <div class="bait-corner-count" id="baitCornerCount">0</div>
+        <div class="bait-corner-label">bait</div>
+        <button class="bait-buy-btn" id="buyMoreBaitBtn" type="button">Quick buy</button>
+      </div>
+    </div>
+    <div class="scene-caption">
+      <span id="gearCaption">Casting…</span>
+      
+    </div>
+
+    <div class="autofish-row">
+      <div class="autofish-status show" id="autoFishStatus">
+        <div class="autofish-status-text"><span id="autoFishStatusText">Casting…</span><span id="autoFishCountText"></span></div>
+        <div class="autofish-progress-track"><div class="autofish-progress-fill" id="autoFishProgressFill"></div></div>
+      </div>
+    </div>
+
+    <div class="section-heading">
+      <h3>Bucket</h3>
+      <div class="nav-links">
+        <button class="icon-nav-btn" id="viewShopBtn"><span class="inb-icon">🛒</span>Tackle Shop</button>
+        <button class="icon-nav-btn" id="viewEquipmentBtn"><span class="inb-icon">🛠️</span>Equipment</button>
+        <button class="icon-nav-btn" id="viewTrophyBtn"><span class="inb-icon">🏆</span>Trophies</button>
+        <button class="icon-nav-btn" id="viewRecordsBtn"><span class="inb-icon">📈</span>Records</button>
+        <button class="icon-nav-btn" id="viewCollectionBtn"><span class="inb-icon">📖</span>Species</button>
+        <button class="icon-nav-btn" id="viewLogBtn"><span class="inb-icon">📜</span>Log</button>
+        <button class="icon-nav-btn" id="viewSkillsBtn"><span class="inb-icon">⭐</span>Skills</button>
+        <button class="icon-nav-btn" id="viewChallengesBtn"><span class="inb-icon">🎯</span>Challenges</button>
+      </div>
+    </div>
+    <div class="inv-strip" id="invStrip"><div class="inv-empty">Nothing caught yet — go fish!</div></div>
+  </section>
+
+  <!-- COLLECTION LOG -->
+  <section class="screen" id="screen-log">
+    <button class="nav-back" id="backFromLog">← Back to the dock</button>
+    <h2>Collection log</h2>
+    <p class="intro-text" style="margin-bottom:0;">Rare curiosities pulled up while fishing, each tied to a species.</p>
+    <div class="collection-grid" id="logGrid"></div>
+  </section>
+
+  <!-- CHALLENGES -->
+  <section class="screen" id="screen-challenges">
+    <button class="nav-back" id="backFromChallenges">← Back to the dock</button>
+    <h2>Challenges</h2>
+    <p class="intro-text" style="margin-bottom:0;">Goals to chase as you play. Claim the coin reward once you've met one.</p>
+    <div id="challengesList" style="margin-top:16px;"></div>
+  </section>
+
+  <!-- SKILLS -->
+  <section class="screen" id="screen-skills">
+    <button class="nav-back" id="backFromSkills">← Back to the dock</button>
+    <h2>Fishing skills</h2>
+    <p class="intro-text" style="margin-bottom:0;">Every fish has its own proficiency from 1–99. The more you catch of a species, the faster you can land that species.</p>
+    <div class="skills-summary" id="skillsSummary"></div>
+    <div class="skills-grid" id="skillsGrid"></div>
+  </section>
+
+  <!-- COLLECTION -->
+  <section class="screen" id="screen-collection">
+    <button class="nav-back" id="backFromCollection">← Back to the dock</button>
+    <h2>Your collection</h2>
+    <p class="intro-text" style="margin-bottom:0;">Species you've hooked, plus what's still locked by rarity or fishing level.</p>
+    <div class="collection-grid" id="collectionGrid"></div>
+  </section>
+
+  <!-- INVENTORY -->
+  <section class="screen" id="screen-inventory">
+    <button class="nav-back" id="backFromInventory">← Back to the dock</button>
+    <h2>Inventory</h2>
+    <p class="intro-text" style="margin-bottom:0;">Every fish waiting on you — sorted by rarity. Sell for coins scaled by fish rarity and catch quality, or keep the best ones as trophies.</p>
+    <div class="inv-toolbar">
+      <span class="inv-toolbar-count" id="invToolbarCount"></span>
+      <button class="btn-tiny gold" id="sellAllBtn">💰 Sell all · 0 ⛃</button>
+    </div>
+    <div class="inventory-list" id="inventoryList"></div>
+  </section>
+
+  <!-- TROPHY ROOM -->
+  <section class="screen" id="screen-trophy">
+    <button class="nav-back" id="backFromTrophy">← Back to the dock</button>
+    <h2>Trophy room</h2>
+    <p class="intro-text" style="margin-bottom:0;">Fish you chose to keep instead of selling. They're off the market for good — unless you change your mind.</p>
+    <div class="trophy-grid" id="trophyGrid"></div>
+  </section>
+
+  <!-- RECORDS -->
+  <section class="screen" id="screen-records">
+    <button class="nav-back" id="backFromRecords">← Back to the dock</button>
+    <h2>Records</h2>
+    <p class="intro-text" style="margin-bottom:0;">Your rarest catch ever, plus your personal best star rating per species.</p>
+    <div id="recordsHero"></div>
+    <div class="records-list" id="recordsList"></div>
+  </section>
+
+  <!-- TACKLE SHOP -->
+  <section class="screen" id="screen-shop">
+    <button class="nav-back" id="backFromShop">← Back to the dock</button>
+    <h2>Tackle shop</h2>
+    <p class="intro-text" style="margin-bottom:20px;">Tune your setup, expand storage, and customize your angler.</p>
+    <div class="shop-tabs" role="tablist" aria-label="Shop category">
+      <button class="shop-tab active" id="shopTabEquipment" type="button" role="tab" aria-selected="true">Equipment</button>
+      <button class="shop-tab" id="shopTabBait" type="button" role="tab" aria-selected="false">Bait</button>
+      <button class="shop-tab" id="shopTabStorage" type="button" role="tab" aria-selected="false">Storage</button>
+      <button class="shop-tab" id="shopTabCustomization" type="button" role="tab" aria-selected="false">Customization</button>
+    </div>
+    <div id="shopList"></div>
+  </section>
+
+  <!-- OWNED EQUIPMENT -->
+  <section class="screen" id="screen-equipment">
+    <button class="nav-back" id="backFromEquipment">← Back to the dock</button>
+    <h2>Equipment</h2>
+    <p class="intro-text" style="margin-bottom:0;">Only gear you own is shown here. Equip a setup to target its species.</p>
+    <div class="equipment-list" id="ownedEquipmentList"></div>
+  </section>
+
+</div>
+
+<div class="toast" id="toast"></div>
+<div class="coin-pop" id="coinPop">+0 ⛃</div>
+
+  <div class="catch-inspect" id="catchInspect">
+    <div class="catch-inspect-card">
+      <div id="catchInspectBody"></div>
+    </div>
+  </div>
+  <div class="confirm-modal" id="confirmModal">
+    <div class="confirm-modal-card">
+      <div class="confirm-modal-title" id="confirmModalTitle">Are you sure?</div>
+      <div class="confirm-modal-body" id="confirmModalBody"></div>
+      <div class="confirm-modal-actions">
+        <button class="btn-tiny ghost" id="confirmModalCancel" type="button">Cancel</button>
+        <button class="btn-tiny gold" id="confirmModalOk" type="button">Confirm</button>
+      </div>
+    </div>
+  </div>
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
