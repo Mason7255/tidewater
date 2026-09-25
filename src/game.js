@@ -70,7 +70,7 @@ export function playerLevel(){ return levelForXp(state.xp); }
 var STORAGE_NAMES = ['Pockets','Snack tray','Wobbly basket','Fancy cooler','Fish tote','Rolling fish cart','Tiny fish wagon','Dockside locker','Suspiciously large basket','Portable fish shed','Harbor locker','Angler trunk','Boat box','Captain\'s chest','Sea pantry','Floating fish closet','Harbor warehouse','Dock warehouse','Fish depot','Aquatic vault'];
 export function storageUnlockedTier(){ return Math.floor((playerLevel()-1)/5); }
 export function storageUpgradeLevel(){ return Math.min(Math.max(0,Number(state.storageTier)||0),storageUnlockedTier()); }
-export function storageCapacity(){ return 5 + storageUpgradeLevel()*5; }
+export function storageCapacity(){ return 25 + storageUpgradeLevel()*5; }
 export function storageNameForTier(tier){ return STORAGE_NAMES[Math.min(Math.max(0,tier||0),STORAGE_NAMES.length-1)]; }
 export function storageName(){ return storageNameForTier(storageUpgradeLevel()); }
 export function storageCostForTier(tier){ return 100 * Math.pow(tier+1,2); }
@@ -126,6 +126,15 @@ export function updateHud(){
   document.getElementById('xpLabel').textContent = lvl >= LEVEL_CAP
     ? state.xp + ' xp (max level)'
     : into + ' / ' + span + ' xp to Lv ' + (lvl+1);
+
+  var fishLevelLabel = document.getElementById('fishLevelLabel');
+  var fishLevelFill = document.getElementById('fishLevelFill');
+  if(fishLevelLabel && fishLevelFill){
+    fishLevelLabel.textContent = lvl >= LEVEL_CAP
+      ? 'Fishing level ' + lvl + ' · MAX'
+      : 'Fishing level ' + lvl + ' · ' + into + '/' + span + ' xp';
+    fishLevelFill.style.width = pct + '%';
+  }
 }
 
 export function updateGearCaption(){
@@ -559,6 +568,7 @@ export function sellRecentCatch(catchId){
   removeRecentCatch(catchId);
   saveState();
   updateHud();
+  resumeFishingAfterSell();
   showCoinGain(price);
   playSellSound(starsForEntry(entry));
   renderInventoryStrip();
@@ -606,7 +616,22 @@ export function inspectInventoryEntry(entry){
   var trophyBtn=document.getElementById('inspectTrophyBtn');
   if(trophyBtn) trophyBtn.addEventListener('click',function(){ trophyEntry(entry.catchId); });
 }
+// Resume automatically after selling frees space
+// when fishing stopped only because storage was full.
+function resumeFishingAfterSell(){
+  if(keptFishCount() >= storageCapacity()) return;
+  if(autoFishing) return;
 
+  if(!autoFishStatusText ||
+     !/full.*sell fish|full.*sell a fish/i.test(
+       autoFishStatusText.textContent
+     )) return;
+
+  startAutoFish();
+
+  if(autoFishStatusText)
+    autoFishStatusText.textContent = 'Casting…';
+}
 // ---------- Selling / trophy actions ----------
 export function sellEntry(catchId){
   var idx = state.inventory.findIndex(function(e){ return e.catchId === catchId; });
@@ -649,6 +674,18 @@ export function sellAllKept(){
   renderCatchFeed();
   renderInventoryList();
   renderInventoryStrip();
+    if(autoFishStoppedForFullStorage){
+    autoFishStoppedForFullStorage = false;
+    startAutoFish();
+
+    var pauseBtn = document.getElementById('togglePauseBtn');
+    pauseBtn.textContent = '❚❚';
+    pauseBtn.title = 'Pause fishing';
+    pauseBtn.setAttribute('aria-label','Pause fishing');
+
+    autoFishStatusText.textContent = 'Casting…';
+    autoFishCountText.textContent = '';
+  }
 }
 export function sellTrophy(catchId){
   var idx = state.inventory.findIndex(function(e){ return e.catchId === catchId; });
@@ -694,6 +731,7 @@ export function parkRodIdle(){
 // There is intentionally no polling loop, animation-frame loop, or second
 // catch path.  This keeps fishing deterministic: one cast -> one fish.
 export var autoFishing = false;
+export var autoFishStoppedForFullStorage = false;
 export var autoFishTimer = null;
 export var autoFishStatusText = document.getElementById('autoFishStatusText');
 export var autoFishCountText = document.getElementById('autoFishCountText');
@@ -815,6 +853,7 @@ export function beginSingleCast(sessionId){
     return;
   }
   if(keptFishCount() >= storageCapacity()){
+    autoFishStoppedForFullStorage = true;
     stopAutoFish();
     autoFishStatusText.textContent = storageName()+' full — sell fish to keep fishing';
     autoFishCountText.textContent = keptFishCount()+' / '+storageCapacity();

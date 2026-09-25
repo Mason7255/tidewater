@@ -160,12 +160,14 @@
   .water-lines{ top:42%; background:linear-gradient(180deg,rgba(91,187,177,.28) 0 7%,transparent 7% 30%,rgba(4,34,49,.22) 30% 100%), repeating-linear-gradient(0deg,#0d3947 0 4px,#155365 4px 8px,#1a6670 8px 12px,#124956 12px 16px), repeating-linear-gradient(90deg,transparent 0 13px,rgba(174,235,218,.34) 13px 17px,transparent 17px 31px); background-blend-mode:screen,normal,screen; animation:pixelWater 6s steps(12,end) infinite; z-index:1; }
   .water-lines:before{ content:''; position:absolute; left:0; right:0; top:-7px; height:8px; background:repeating-linear-gradient(90deg,#315967 0 18px,#56816f 18px 31px,#315967 31px 44px); opacity:.95; }
   .water-lines:after{ content:''; position:absolute; left:48%; top:10%; width:18%; height:72%; background:repeating-linear-gradient(0deg,rgba(255,226,145,.2) 0 3px,transparent 3px 13px); opacity:.7; transform:skewX(-12deg); }
-  .fish-efficiency{ position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:7; width:min(230px,42%); padding:7px 9px; border:1px solid rgba(255,255,255,.25); background:rgba(18,42,56,.72); box-shadow:0 3px 0 rgba(0,0,0,.2); }
-  .fish-efficiency-label{ overflow:hidden; color:#f4e8c5; font-size:9px; font-weight:900; letter-spacing:.04em; text-align:center; text-overflow:ellipsis; text-transform:uppercase; white-space:nowrap; text-shadow:1px 1px 0 #19303b; }
-  .fish-efficiency-track{ height:6px; margin-top:5px; overflow:hidden; background:rgba(4,21,31,.7); border:1px solid rgba(255,255,255,.2); }
+  .scene-badges{ position:absolute; left:50%; top:14px; transform:translateX(-50%); z-index:7; display:flex; flex-direction:column; align-items:center; gap:6px; width:min(280px,60%); }
+  .fish-level,.fish-efficiency{ position:static; width:100%; padding:7px 10px; border:1px solid rgba(255,255,255,.25); background:rgba(18,42,56,.72); box-shadow:0 3px 0 rgba(0,0,0,.2); }
+  .fish-level-label,.fish-efficiency-label{ overflow:visible; color:#f4e8c5; font-size:clamp(8px,2.4vw,10px); font-weight:900; letter-spacing:.03em; text-align:center; text-overflow:clip; text-transform:uppercase; white-space:normal; line-height:1.25; text-shadow:1px 1px 0 #19303b; }
+  .fish-level-track,.fish-efficiency-track{ height:6px; margin-top:5px; overflow:hidden; background:rgba(4,21,31,.7); border:1px solid rgba(255,255,255,.2); }
+  .fish-level-fill{ width:0; height:100%; background:linear-gradient(90deg,#4fb8d9,#bdeeff); transition:width .25s ease; }
   .fish-efficiency-fill{ width:0; height:100%; background:linear-gradient(90deg,#d9a441,#ffe291); transition:width .25s ease; }
   @keyframes pixelWater{ from{background-position:0 0,0 0;} to{background-position:-48px 0,96px 0;} }
-  .dock{ left:0; bottom:24px; transform:none; width:56%; height:126px; z-index:2; }
+  .dock{ left:0; bottom:24px; transform:none; width:50%; height:126px; z-index:2; }
   .dock:before{ content:''; position:absolute; left:0; right:0; bottom:0; height:30px; background:repeating-linear-gradient(90deg,#8b5a32 0 22px,#a86f3e 22px 26px); border:3px solid #5c3a24; box-shadow:inset 0 0 0 2px #6d4529, 0 9px 0 rgba(64,39,25,.45); }
   .dock:after{ content:''; position:absolute; left:0; right:0; bottom:29px; height:9px; background:#b57a43; border:2px solid #5c3a24; box-shadow:0 9px 0 #8b5a32; }
   .dock-plank{ display:none; }
@@ -177,7 +179,7 @@
   @keyframes anglerBob{ 0%,100%{ transform:translateX(-50%) translateY(0); } 50%{ transform:translateX(-50%) translateY(-2px); } }
   @media (prefers-reduced-motion: reduce){ .player{ animation:none; } }
   .dock-ladder{ position:absolute; left:10px; right:auto; bottom:-10px; width:24px; height:54px; border-left:4px solid #5c3a24; border-right:4px solid #5c3a24; background:repeating-linear-gradient(0deg,transparent 0 10px,#b57a43 10px 14px); }
-  .dock-bucket{ position:absolute; left:calc(56% - 120px); bottom:40px; width:36px; height:27px; z-index:3; background:linear-gradient(90deg,#c8ceca 0 12%,#ffffff 12% 88%,#c8ceca 88%),linear-gradient(180deg,#ffffff 0 38%,#e87832 38% 58%,#f5f5ee 58% 100%); background-blend-mode:multiply; border:2px solid #4d5353; border-radius:2px 2px 5px 5px; box-shadow:inset 0 -5px 0 rgba(74,79,78,.16),0 3px 0 rgba(0,0,0,.25); transition:bottom .2s ease; }
+  .dock-bucket{ position:absolute; left:calc(50% - 120px); bottom:40px; width:36px; height:27px; z-index:3; background:linear-gradient(90deg,#c8ceca 0 12%,#ffffff 12% 88%,#c8ceca 88%),linear-gradient(180deg,#ffffff 0 38%,#e87832 38% 58%,#f5f5ee 58% 100%); background-blend-mode:multiply; border:2px solid #4d5353; border-radius:2px 2px 5px 5px; box-shadow:inset 0 -5px 0 rgba(74,79,78,.16),0 3px 0 rgba(0,0,0,.25); transition:bottom .2s ease; }
   .dock-bucket:before{ content:''; position:absolute; left:-4px; top:-5px; width:40px; height:6px; border:2px solid #4d5353; border-radius:1px; background:#ffffff; box-shadow:inset 0 -2px 0 rgba(74,79,78,.2); }
   .dock-bucket:after{ content:none; }
   .dock-bucket.bucket-hit{ animation:bucketHit .28s steps(2,end); }
@@ -264,8 +266,8 @@
     .card{ padding:20px 16px; }
     #screen-dock{ display:flex; flex-direction:column; }
     #screen-dock > .scene{ order:1; width:100%; height:300px; margin-bottom:10px; }
-    .dock{ width:70%; bottom:18px; }
-    .dock-bucket{ left:calc(70% - 120px); }
+    .dock{ width:56%; bottom:18px; }
+    .dock-bucket{ left:calc(56% - 120px); }
     #screen-dock > .catch-feed-panel{ order:2; position:relative; left:auto; top:auto; width:100%; max-height:none; margin:0 0 12px; }
     #screen-dock > .scene-caption{ order:3; }
     #screen-dock > .bait-row{ order:4; }
@@ -292,6 +294,13 @@
     #screen-dock > .scene{ height:270px; }
     .shop-grid,.collection-grid,.trophy-grid,.skills-grid{ grid-template-columns:1fr; }
     .stat-pill{ font-size:12px; padding:7px 8px; }
+    /* Shorter scene here, so keep the badge stack + bait icon as compact
+       as possible — less risk of the stack reaching down into the dock. */
+    .scene-badges{ width:min(170px,66%); gap:4px; }
+    .fish-level,.fish-efficiency{ padding:5px 8px; }
+    .fish-level-label,.fish-efficiency-label{ font-size:7.5px; }
+    .bait-corner{ padding:6px 8px; min-width:50px; }
+    .bait-corner-icon{ font-size:16px; }
   }
 
   /* ---------- Dock feedback animations ---------- */
@@ -313,12 +322,23 @@
   .fx-catch.rating-max{ animation-duration:2.75s; font-size:25px; }
   .fx-catch.rating-max .fx-fish{ font-size:62px; animation:fishExplodeBig 1.05s cubic-bezier(.16,1,.3,1) both; }
   .fx-particle{ position:absolute; left:-205px; top:-50px; width:7px; height:7px; border-radius:50%; opacity:0; animation:particleBurst 1s ease-out forwards; }
-  .fx-level{ left:50%; top:-104px; color:#FFE48A; font-family:'Press Start 2P','Courier New',monospace; font-size:24px; line-height:1.7; letter-spacing:1px; text-align:center; transform:translate(-50%, 28px) scale(.45); filter:drop-shadow(0 0 5px rgba(255,214,90,.8)); text-shadow:3px 0 0 #000,-3px 0 0 #000,0 3px 0 #000,0 -3px 0 #000,2px 2px 0 #000,-2px 2px 0 #000,2px -2px 0 #000,-2px -2px 0 #000,0 0 16px rgba(255,210,70,.7); animation:levelUpFx 4.6s cubic-bezier(.16,1,.3,1) forwards; }
-  .fx-level-sub{ position:absolute; left:50%; top:-46px; color:#fff; font-family:'Manrope',sans-serif; font-size:15px; font-weight:900; letter-spacing:2px; white-space:nowrap; transform:translate(-50%, 18px) scale(.7); opacity:0; text-shadow:2px 0 0 #000,-2px 0 0 #000,0 2px 0 #000,0 -2px 0 #000,0 2px 7px rgba(0,0,0,.65); animation:levelSubFx 4.2s ease-out forwards; }
+  /* Level-up banner: position:fixed here measures from the *viewport*, not
+     from .player-effects (its fixed-but-untransformed parent), so this
+     always lands dead-center no matter where the fisherman is on screen. */
+  .fx-level{ position:fixed; left:50vw; top:50vh; color:#FFE48A; font-family:'Press Start 2P','Courier New',monospace; font-size:clamp(26px,6vw,42px); line-height:1.6; letter-spacing:2px; text-align:center; transform:translate(-50%,-50%) scale(.4) rotate(-8deg); filter:drop-shadow(0 0 10px rgba(255,214,90,.9)) drop-shadow(0 0 30px rgba(255,180,40,.55)); text-shadow:4px 0 0 #000,-4px 0 0 #000,0 4px 0 #000,0 -4px 0 #000,3px 3px 0 #000,-3px 3px 0 #000,3px -3px 0 #000,-3px -3px 0 #000,0 0 24px rgba(255,210,70,.85); animation:levelUpFx 2.8s cubic-bezier(.16,1,.3,1) forwards; z-index:2147483647; }
+  .fx-level-sub{ position:fixed; left:50vw; top:calc(50vh + 54px); color:#fff; font-family:'Manrope',sans-serif; font-size:17px; font-weight:900; letter-spacing:3px; white-space:nowrap; transform:translate(-50%,14px) scale(.7); opacity:0; text-shadow:2px 0 0 #000,-2px 0 0 #000,0 2px 0 #000,0 -2px 0 #000,0 2px 7px rgba(0,0,0,.65); animation:levelSubFx 2.8s ease-out forwards; z-index:2147483647; }
+  /* Spinning ray burst behind the banner */
+  .fx-level:before{ content:''; position:fixed; left:50vw; top:50vh; width:min(70vw,380px); height:min(70vw,380px); transform:translate(-50%,-50%); background:repeating-conic-gradient(from 0deg, rgba(255,224,140,.55) 0deg 6deg, transparent 6deg 18deg); border-radius:50%; filter:blur(1px); opacity:0; animation:levelRaysFx 2.8s ease-out forwards; z-index:-1; }
+  /* Full-screen golden flash + vignette while the banner is up (no JS needed) */
+  .player-effects:has(.fx-level):before{ content:''; position:fixed; inset:0; background:radial-gradient(circle at 50% 50%, rgba(255,225,140,.4), transparent 55%), radial-gradient(circle at 50% 50%, transparent 45%, rgba(0,0,0,.4) 100%); animation:levelFlashFx 1.3s ease-out forwards; z-index:2147483646; }
   .fx-firework{ position:absolute; left:50%; top:-25px; width:9px; height:9px; border-radius:50%; opacity:0; animation:fireworkFx 2.15s cubic-bezier(.15,.75,.2,1) forwards; }
   .fx-firework i{ position:absolute; left:50%; top:50%; width:5px; height:5px; margin:-2.5px; border-radius:1px; background:currentColor; box-shadow:0 0 7px currentColor; transform:translate(0,0) scale(.5); }
-  @keyframes levelUpFx{ 0%{opacity:0; transform:translate(-50%,34px) scale(.45) rotate(-7deg);} 12%{opacity:1; transform:translate(-50%,0) scale(1.18) rotate(2deg);} 24%{transform:translate(-50%,-8px) scale(1.03) rotate(-1deg);} 46%{opacity:1; transform:translate(-50%,-14px) scale(1.08) rotate(0);} 76%{opacity:1; transform:translate(-50%,-24px) scale(1.02);} 100%{opacity:0; transform:translate(-50%,-68px) scale(.96);} }
-  @keyframes levelSubFx{ 0%,12%{opacity:0; transform:translate(-50%,18px) scale(.7);} 28%{opacity:1; transform:translate(-50%,0) scale(1);} 72%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-30px) scale(.95);} }
+  @keyframes levelUpFx{ 0%{opacity:0; transform:translate(-50%,-50%) scale(.3) rotate(-10deg);} 10%{opacity:1; transform:translate(-50%,-50%) scale(1.4) rotate(5deg);} 20%{transform:translate(-50%,-50%) scale(.9) rotate(-4deg);} 32%{transform:translate(-50%,-50%) scale(1.14) rotate(2deg);} 44%{transform:translate(-50%,-50%) scale(1) rotate(0);} 88%{opacity:1; transform:translate(-50%,-50%) scale(1) rotate(0);} 100%{opacity:0; transform:translate(-50%,-58%) scale(.92) rotate(0);} }
+  @keyframes levelSubFx{ 0%,18%{opacity:0; transform:translate(-50%,14px) scale(.7);} 34%{opacity:1; transform:translate(-50%,0) scale(1.1);} 46%{transform:translate(-50%,0) scale(1);} 88%{opacity:1;} 100%{opacity:0; transform:translate(-50%,-16px) scale(.95);} }
+  @keyframes levelRaysFx{ 0%{opacity:0; transform:translate(-50%,-50%) scale(.2) rotate(0deg);} 15%{opacity:.9;} 100%{opacity:0; transform:translate(-50%,-50%) scale(1.6) rotate(90deg);} }
+  @keyframes levelFlashFx{ 0%{opacity:0;} 10%{opacity:1;} 100%{opacity:0;} }
+  .fx-firework{ position:absolute; left:50%; top:-25px; width:9px; height:9px; border-radius:50%; opacity:0; animation:fireworkFx 2.15s cubic-bezier(.15,.75,.2,1) forwards; }
+  .fx-firework i{ position:absolute; left:50%; top:50%; width:5px; height:5px; margin:-2.5px; border-radius:1px; background:currentColor; box-shadow:0 0 7px currentColor; transform:translate(0,0) scale(.5); }
   @keyframes fireworkFx{ 0%{opacity:0; transform:translate(0,0) scale(.2);} 18%{opacity:1;} 100%{opacity:0; transform:translate(var(--fx-x),var(--fx-y)) scale(1.15);} }
   .fx-firework i:nth-child(1){ transform:translate(0,0); animation:fw1 1.7s ease-out forwards; }
   .fx-firework i:nth-child(2){ transform:translate(0,0); animation:fw2 1.7s ease-out forwards; }
@@ -331,8 +351,7 @@
   @keyframes fishExplode{ 0%{transform:scale(.35) rotate(-25deg); opacity:.2;} 45%{transform:scale(1.45) rotate(18deg); opacity:1;} 65%{transform:scale(.92) rotate(-8deg);} 100%{transform:scale(1) rotate(0);} }
   @keyframes fishExplodeBig{ 0%{transform:scale(.2) rotate(-30deg); opacity:0;} 35%{transform:scale(1.65) rotate(22deg); opacity:1;} 55%{transform:scale(.9) rotate(-12deg);} 75%{transform:scale(1.2) rotate(5deg);} 100%{transform:scale(1) rotate(0);} }
   @keyframes particleBurst{ 0%{opacity:0; transform:translate(-50%,-50%) scale(.2);} 18%{opacity:1;} 100%{opacity:0; transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.5);} }
-  @keyframes levelUpFx{ 0%{opacity:0; transform:translate(-50%,24px) scale(.55) rotate(-4deg);} 25%{opacity:1; transform:translate(-50%,0) scale(1.18) rotate(2deg);} 70%{opacity:1; transform:translate(-50%,-18px) scale(1);} 100%{opacity:0; transform:translate(-50%,-52px) scale(1.08);} }
-  @media (prefers-reduced-motion: reduce){ .fx-item,.fx-particle{ animation:none; opacity:1; transform:none; } .fx-item{left:50%;} .player-effects{display:block;} }
+  @media (prefers-reduced-motion: reduce){ .fx-item,.fx-particle{ animation:none; opacity:1; transform:none; } .fx-item{left:50%;} .player-effects{display:block;} .fx-level,.fx-level-sub,.fx-level:before,.player-effects:has(.fx-level):before{ animation:none; opacity:1; } .fx-level{ transform:translate(-50%,-50%) scale(1) rotate(0); } }
   .cast-lure{ position:absolute; bottom:92px; left:50%; width:6px; height:6px; border-radius:50%; background:var(--gold); opacity:0; z-index:5; pointer-events:none; }
   .cast-lure.flying{ animation:castFly .5s cubic-bezier(.3,.6,.4,1) forwards; }
   .cast-lure.parked{ left:calc(50% + 72px); bottom:64px; opacity:1; }
@@ -564,9 +583,12 @@
   #screen-dock > .menu-rail{ grid-column:1; grid-row:1 / span 6; }
   #screen-dock > .catch-feed-panel{ position:relative; left:auto; right:auto; top:auto; width:100%; max-height:none; margin:10px 0 0; }
   @media (max-width:700px){
-    .fish-efficiency{ left:auto; right:8px; top:10px; transform:none; width:min(118px,52%); }
-    .bait-corner{ left:8px; top:10px; }
+    .scene-badges{ left:50%; top:10px; transform:translateX(-50%); width:min(200px,72%); }
+    .bait-corner{ left:8px; top:10px; padding:7px 9px; min-width:56px; }
     .scene-storage-actions{ right:8px; bottom:8px; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
+    /* Dock goes to width:70%/bottom:18px here (see .dock rule above), so
+       the bar's anchor point has to shift to match. */
+    #dockScene #autoFishStatus{ left:calc(56% - 38px); bottom:122px; }
   }
 
   .menu-rail{ position:sticky; top:8px; display:flex; flex-direction:column; gap:8px; max-height:calc(100dvh - 16px); overflow-y:auto; }
@@ -611,3 +633,58 @@
   .rare-actions{ position:relative; z-index:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:14px; }
   .rare-actions button{ margin:0; width:100%; min-height:44px; padding:10px 8px; font-size:13px; box-shadow:none; }
   .rare-actions .rare-close{ grid-column:1 / -1; }
+
+  
+
+/* Compact OSRS-style "health bar" floating above the fisherman's head.
+   IMPORTANT: #dockPlayerWrap *is* .dock (see index.html) — renderPlayer()
+   overwrites its innerHTML with .player, so the fisherman's containing
+   block is the dock box (width:56%, or 70% on mobile), not the full
+   .scene. #autoFishStatus lives directly under #dockScene instead, so we
+   replicate the dock's left-offset/width math here to land on the same
+   point rather than measuring off the full scene width. */
+#dockScene #autoFishStatus {
+  position: absolute;
+  left: calc(50% - 38px);
+  bottom: 128px;
+  top: auto;
+  right: auto;
+  transform: translateX(-50%);
+
+  width: 34px;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+
+  background: none;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+
+  z-index: 6;
+  pointer-events: none;
+}
+
+/* OSRS bars have no label — just the bar itself */
+#dockScene #autoFishStatus .autofish-status-text {
+  display: none;
+}
+
+#dockScene .autofish-progress-track {
+  height: 6px;
+  padding: 1px;
+  box-sizing: border-box;
+
+  background: #000;
+  border: 1px solid #000;
+  border-radius: 0;
+  overflow: hidden;
+}
+
+#dockScene .autofish-progress-fill {
+  height: 100%;
+  background: #57e389;
+  border-radius: 0;
+  box-shadow: none;
+  transition: width .15s linear;
+}

@@ -127,12 +127,28 @@
     <div class="scene" id="dockScene">
       <div class="sky-glow"></div>
       <div class="water-lines"></div>
-      <div class="fish-efficiency" id="fishEfficiency">
-        <div class="fish-efficiency-label" id="fishEfficiencyLabel">Fishing efficiency</div>
-        <div class="fish-efficiency-track"><div class="fish-efficiency-fill" id="fishEfficiencyFill"></div></div>
+      <div class="scene-badges" id="sceneBadges">
+        <div class="fish-level" id="fishLevel">
+          <div class="fish-level-label" id="fishLevelLabel">Fishing Level 1</div>
+          <div class="fish-level-track"><div class="fish-level-fill" id="fishLevelFill"></div></div>
+        </div>
+        <div class="fish-efficiency" id="fishEfficiency">
+          <div class="fish-efficiency-label" id="fishEfficiencyLabel">Fishing efficiency</div>
+          <div class="fish-efficiency-track"><div class="fish-efficiency-fill" id="fishEfficiencyFill"></div></div>
+        </div>
       </div>
       <div class="dock-bucket" id="dockBucket" aria-label="Fish bucket"></div>
       <div class="dock" id="dockPlayerWrap"><div class="dock-post"></div><div class="dock-post"></div><div class="dock-ladder"></div></div>
+      <div class="autofish-status show" id="autoFishStatus">
+  <div class="autofish-status-text">
+    <span id="autoFishStatusText">Casting…</span>
+    <span id="autoFishCountText"></span>
+  </div>
+
+  <div class="autofish-progress-track">
+    <div class="autofish-progress-fill" id="autoFishProgressFill"></div>
+  </div>
+</div>
       <div class="cast-lure" id="castLure"></div>
       <div class="ripple" id="ripple"></div>
       <div class="scene-storage-actions">
@@ -158,12 +174,6 @@
       
     </div>
 
-    <div class="autofish-row">
-      <div class="autofish-status show" id="autoFishStatus">
-        <div class="autofish-status-text"><span id="autoFishStatusText">Casting…</span><span id="autoFishCountText"></span></div>
-        <div class="autofish-progress-track"><div class="autofish-progress-fill" id="autoFishProgressFill"></div></div>
-      </div>
-    </div>
 
     <div class="section-heading">
       <h3>Bucket</h3>
