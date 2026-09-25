@@ -716,3 +716,9 @@
     border-radius: 5px;
   }
 }
+/* Hide dock shortcut buttons without breaking JavaScript */
+#sceneInventoryBtn,
+#sellRecentBtn,
+#buyMoreBaitBtn {
+  display: none !important;
+}
