@@ -688,3 +688,31 @@
   box-shadow: none;
   transition: width .15s linear;
 }
+
+/* Compact bait box and Quick Buy button on mobile */
+@media (max-width: 700px) {
+  .bait-corner {
+    padding: 6px 8px;
+    min-width: 54px;
+    border-radius: 8px;
+  }
+
+  .bait-corner-icon {
+    font-size: 17px;
+  }
+
+  .bait-corner-count {
+    font-size: 12px;
+  }
+
+  .bait-corner-label {
+    font-size: 8px;
+  }
+
+  .bait-buy-btn {
+    margin-top: 4px;
+    padding: 4px 5px;
+    font-size: 9px;
+    border-radius: 5px;
+  }
+}
