@@ -367,7 +367,8 @@ export function quickBuySelectedBait(){
 }
 
 document.getElementById('viewShopBtn').addEventListener('click', function(){ openTackleShop('equipment'); });
-document.getElementById('buyMoreBaitBtn').addEventListener('click', quickBuySelectedBait);
+var buyMoreBaitBtnEl = document.getElementById('buyMoreBaitBtn');
+if(buyMoreBaitBtnEl) buyMoreBaitBtnEl.addEventListener('click', quickBuySelectedBait);
 document.getElementById('backFromShop').addEventListener('click', function(){ showScreen('screen-dock'); });
 document.getElementById('viewEquipmentBtn').addEventListener('click', function(){ renderOwnedEquipment(); showScreen('screen-equipment'); });
 document.getElementById('backFromEquipment').addEventListener('click', function(){ showScreen('screen-dock'); });

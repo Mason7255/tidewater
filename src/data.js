@@ -208,7 +208,7 @@ export var COLLECTION_LOG_ITEMS = [
 var MYTHIC_LOG_ITEMS = [];
 FISH.forEach(function(fish){
   for(var mythicNumber=1;mythicNumber<=5;mythicNumber++){
-    MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.001, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
+    MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.0002, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
   }
 });
 COLLECTION_LOG_ITEMS = COLLECTION_LOG_ITEMS.concat(MYTHIC_LOG_ITEMS);

@@ -94,10 +94,8 @@ export function updateHud(){
   var baitCount = currentBaitCount();
   document.getElementById('fishCount').textContent = totalFishCaught();
   document.getElementById('coinCount').textContent = state.coins;
-  document.getElementById('baitCornerIcon').textContent = baitCount > 0 && bait ? bait.icon : '🎣';
-  var baitCountEl = document.getElementById('baitCornerCount');
-  baitCountEl.textContent = baitCount > 0 ? baitCount : '0';
-  baitCountEl.classList.toggle('low', baitCount <= 0);
+  // The bait-corner display was removed; bait inventory and consumption remain active.
+
   var storageCountEl = document.getElementById('sceneStorageCount');
   if(storageCountEl) storageCountEl.textContent = keptFishCount()+' / '+storageCapacity();
   var storageProp = document.getElementById('dockBucket');
@@ -440,16 +438,17 @@ export function grantFish(fish, forcedQuality){
       showToast((isNewLogItem ? 'New collection log item! ' : 'Found another ') + logItem.icon + ' ' + logItem.name + '.');
     }, isNewLogItem ? 1400 : 1100);
   }
-  mythicLogItemsForFish(fish.id).forEach(function(mythicItem){
-    if(Math.random() >= mythicItem.chance) return;
-    var isNewMythic = !state.collectionLog[mythicItem.id];
-    state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
-    setTimeout(function(){
-      playCollectionSound();
-      showMegaRareFeedback(mythicItem, fish);
-      showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
-    }, isNewMythic ? 1400 : 1100);
-  });
+ var mythicPool = mythicLogItemsForFish(fish.id);
+if(mythicPool.length && Math.random() < 0.001){
+  var mythicItem = mythicPool[Math.floor(Math.random() * mythicPool.length)];
+  var isNewMythic = !state.collectionLog[mythicItem.id];
+  state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
+  setTimeout(function(){
+    playCollectionSound();
+    showMegaRareFeedback(mythicItem, fish);
+    showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
+  }, isNewMythic ? 1400 : 1100);
+}
 
   saveState();
   updateHud(); updateGearCaption(); renderInventoryStrip(); renderBaitChips(); renderCatchFeed();
@@ -485,7 +484,7 @@ export function refreshRecentCatches(){
     if(e.status === 'kept') keptIds[e.catchId] = true;
   }
   var history = state.catchHistory || [], recent = [], seenIds = Object.create(null);
-  for(var j=0;j<history.length && recent.length<3;j++){
+  for(var j=0;j<history.length && recent.length<10;j++){
     var catchId = history[j].catchId;
     if(keptIds[catchId] && !seenIds[catchId]){
       seenIds[catchId] = true;

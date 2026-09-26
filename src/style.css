@@ -228,10 +228,13 @@
   .legendary-stars{ margin-top:4px; color:#FFE48A; font-size:20px; letter-spacing:2px; }
   .legendary-details{ margin-top:7px; color:#D7E1D7; font-family:monospace; font-size:11px; }
 
-  /* ---------- Recent catch feed ---------- */
-  .catch-feed-panel{ position:absolute; right:14px; top:16px; width:158px; max-height:220px; z-index:8; background:rgba(9,19,31,.88); border:1px solid rgba(255,255,255,.12); border-radius:10px; padding:7px; box-shadow:0 10px 30px rgba(0,0,0,.25); }
-  .catch-feed-title{ font-family:'Fraunces',serif; color:var(--cream); font-size:13px; margin-bottom:5px; }
-  .catch-feed-list{ display:flex; flex-direction:column; gap:4px; max-height:175px; overflow:auto; }
+  /* ---------- Recent catch feed ----------
+     Sits below the fishing scene as a normal block (see #screen-dock grid
+     rule further down), full width, showing up to the 10 catches game.js
+     tracks in state.recentCatches instead of the old 3-row sidebar box. */
+  .catch-feed-panel{ position:static; width:100%; max-height:none; background:rgba(9,19,31,.88); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:12px 14px 14px; margin:14px 0 0; box-shadow:0 10px 30px rgba(0,0,0,.25); box-sizing:border-box; }
+  .catch-feed-title{ font-family:'Fraunces',serif; color:var(--cream); font-size:15px; margin-bottom:9px; }
+  .catch-feed-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:6px; max-height:420px; overflow-y:auto; }
   .catch-feed-empty{ color:var(--silver); font-size:11px; padding:6px 2px; }
   .catch-feed-row{ appearance:none; border:0; border-radius:7px; background:rgba(255,255,255,.05); color:var(--cream); display:flex; align-items:center; gap:5px; width:100%; padding:5px 4px; text-align:left; cursor:pointer; font:inherit; }
   .catch-feed-row:hover{ background:rgba(255,255,255,.1); }
@@ -255,8 +258,9 @@
   .inspect-stats{ display:flex; justify-content:space-around; margin:14px 0 18px; color:var(--silver); font-size:12px; }
   .inspect-stats b{ display:block; color:var(--cream); font-size:15px; margin-top:3px; }
   /* ---------- Mobile layout ----------
-     Keep the desktop dock layout unchanged. On narrow screens the catch feed
-     moves below the scene so it remains readable and tappable. ---------- */
+     The dock uses a CSS grid (see #screen-dock.active further down) that
+     already stacks the scene, catch feed, caption, and bucket vertically in
+     DOM order, so no flex/order overrides are needed here anymore. ---------- */
   @media (max-width:700px){
     #app{ max-width:100%; padding:12px 10px 28px; }
     .topbar{ padding-left:0; padding-right:0; }
@@ -264,18 +268,10 @@
     .stat-pill{ flex:1 1 auto; justify-content:center; min-width:0; }
     .menu-title{ font-size:36px; }
     .card{ padding:20px 16px; }
-    #screen-dock{ display:flex; flex-direction:column; }
-    #screen-dock > .scene{ order:1; width:100%; height:300px; margin-bottom:10px; }
+    #screen-dock > .scene{ width:100%; height:300px; margin-bottom:10px; }
     .dock{ width:56%; bottom:18px; }
     .dock-bucket{ left:calc(56% - 120px); }
-    #screen-dock > .catch-feed-panel{ order:2; position:relative; left:auto; top:auto; width:100%; max-height:none; margin:0 0 12px; }
-    #screen-dock > .scene-caption{ order:3; }
-    #screen-dock > .bait-row{ order:4; }
-    #screen-dock > .autofish-row{ order:5; }
-    #screen-dock > .autosell-row{ order:6; }
-    #screen-dock > .section-heading{ order:7; }
-    #screen-dock > .inv-strip{ order:8; }
-    .catch-feed-list{ max-height:250px; }
+    .catch-feed-list{ grid-template-columns:1fr; max-height:280px; }
     .scene-caption{ flex-wrap:wrap; gap:8px; }
     .bait-row,.autofish-row,.autosell-row{ width:100%; }
     .bait-chips{ flex-wrap:wrap; }
@@ -299,8 +295,6 @@
     .scene-badges{ width:min(170px,66%); gap:4px; }
     .fish-level,.fish-efficiency{ padding:5px 8px; }
     .fish-level-label,.fish-efficiency-label{ font-size:7.5px; }
-    .bait-corner{ padding:6px 8px; min-width:50px; }
-    .bait-corner-icon{ font-size:16px; }
   }
 
   /* ---------- Dock feedback animations ---------- */
@@ -531,12 +525,6 @@
     .inventory-rarity-header:first-child{margin-top:0;}
     .inventory-rarity-count{margin-left:auto;color:var(--muted);font-size:12px;}
 
-  .bait-corner{ position:absolute; left:14px; top:16px; z-index:8; background:rgba(9,19,31,.88); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:9px 12px; text-align:center; min-width:64px; }
-  .bait-corner-icon{ font-size:20px; line-height:1; }
-  .bait-corner-count{ font-size:13px; font-weight:800; margin-top:2px; }
-  .bait-corner-count.low{ color:#F3B8A4; }
-  .bait-corner-label{ font-size:9px; color:var(--silver); text-transform:uppercase; letter-spacing:.04em; margin-top:1px; }
-  .bait-buy-btn{ margin-top:7px; width:100%; padding:6px 7px; border-radius:8px; background:rgba(217,164,65,.18); border:1px solid rgba(217,164,65,.45); color:var(--gold); font-size:10px; font-weight:800; }
   .catch-feed-row{ position:relative; }
   .catch-feed-actions{ margin-left:auto; display:flex; flex-direction:column; gap:4px; }
   .catch-quick-sell{ padding:4px 6px; border-radius:7px; border:1px solid rgba(217,164,65,.4); background:rgba(217,164,65,.12); color:var(--gold); font-size:9px; font-weight:900; white-space:nowrap; }
@@ -581,10 +569,8 @@
   #screen-dock.active{ display:grid; grid-template-columns:116px minmax(0,1fr); column-gap:10px; align-items:start; }
   #screen-dock > *{ grid-column:2; min-width:0; }
   #screen-dock > .menu-rail{ grid-column:1; grid-row:1 / span 6; }
-  #screen-dock > .catch-feed-panel{ position:relative; left:auto; right:auto; top:auto; width:100%; max-height:none; margin:10px 0 0; }
   @media (max-width:700px){
     .scene-badges{ left:50%; top:10px; transform:translateX(-50%); width:min(200px,72%); }
-    .bait-corner{ left:8px; top:10px; padding:7px 9px; min-width:56px; }
     .scene-storage-actions{ right:8px; bottom:8px; gap:5px; flex-wrap:wrap; justify-content:flex-end; }
     /* Dock goes to width:70%/bottom:18px here (see .dock rule above), so
        the bar's anchor point has to shift to match. */
@@ -689,37 +675,9 @@
   transition: width .15s linear;
 }
 
-/* Compact bait box and Quick Buy button on mobile */
-@media (max-width: 700px) {
-  .bait-corner {
-    padding: 6px 8px;
-    min-width: 54px;
-    border-radius: 8px;
-  }
-
-  .bait-corner-icon {
-    font-size: 17px;
-  }
-
-  .bait-corner-count {
-    font-size: 12px;
-  }
-
-  .bait-corner-label {
-    font-size: 8px;
-  }
-
-  .bait-buy-btn {
-    margin-top: 4px;
-    padding: 4px 5px;
-    font-size: 9px;
-    border-radius: 5px;
-  }
-}
 /* Hide dock shortcut buttons without breaking JavaScript */
 #sceneInventoryBtn,
-#sellRecentBtn,
-#buyMoreBaitBtn {
+#sellRecentBtn {
   display: none !important;
 }
 /* Bait counter beside inventory count, bottom-left */
@@ -766,5 +724,13 @@
   #dockScene .bait-storage-count {
     font-size: 10px;
     padding: 5px 7px;
+  }
+}
+/* Recent catches panel: sits below the scene on every screen size via the
+   #screen-dock grid rule above (DOM order already places it right after
+   .scene). Shrink it a bit on narrow screens so more fits without scrolling. */
+@media (max-width: 700px) {
+  #screen-dock > .catch-feed-panel {
+    margin: 12px 0;
   }
 }
