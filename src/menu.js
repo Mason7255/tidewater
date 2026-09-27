@@ -43,6 +43,7 @@ export function makeFreshState(){
     upgrades:{}, storageTier:0, xp:0, caught:{}, proficiencies:{}, inventory:[],
     records:{ bestFloat:1, bestStars:0, bestFishId:null, bestCatchId:null, perSpeciesFloat:{}, perSpeciesStars:{}, perSpeciesCatchId:{} }, recentCatches:[], catchHistory:[],
     collectionLog:{}, claimedChallenges:{}, challengeTiers:{},
+    equippedClothing:{hat:null, shirt:null, pants:null, shoes:null, gloves:null},
     soundEnabled:true, volume:40
   };
 }

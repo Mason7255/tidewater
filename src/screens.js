@@ -6,8 +6,8 @@
 
 
 import { playBuySound, playEquipSound } from './audio.js';
-import { BAIT_TYPES, CHALLENGES, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, baitById, baitForFish, equipmentById } from './data.js';
-import { closeCatchInspect, currentBaitId, fishById, inspectInventoryEntry, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, trophyEntry, updateGearCaption, updateHud } from './game.js';
+import { BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, baitById, baitForFish, clothingItemsForSlot, equipmentById } from './data.js';
+import { closeCatchInspect, currentBaitId, equipClothing, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, trophyEntry, unequipClothingSlot, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showCoinGain, showScreen, showToast } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
@@ -375,8 +375,24 @@ document.getElementById('viewShopBtn').addEventListener('click', function(){ ope
 var buyMoreBaitBtnEl = document.getElementById('buyMoreBaitBtn');
 if(buyMoreBaitBtnEl) buyMoreBaitBtnEl.addEventListener('click', quickBuySelectedBait);
 document.getElementById('backFromShop').addEventListener('click', function(){ showScreen('screen-dock'); });
-document.getElementById('viewEquipmentBtn').addEventListener('click', function(){ renderOwnedEquipment(); showScreen('screen-equipment'); });
+export var activeEquipmentTab = 'gear';
+export function setEquipmentTab(tab){
+  activeEquipmentTab = tab === 'clothing' ? 'clothing' : 'gear';
+  document.getElementById('equipTabGear').classList.toggle('active', activeEquipmentTab==='gear');
+  document.getElementById('equipTabGear').setAttribute('aria-selected', activeEquipmentTab==='gear' ? 'true' : 'false');
+  document.getElementById('equipTabClothing').classList.toggle('active', activeEquipmentTab==='clothing');
+  document.getElementById('equipTabClothing').setAttribute('aria-selected', activeEquipmentTab==='clothing' ? 'true' : 'false');
+  document.getElementById('ownedEquipmentList').style.display = activeEquipmentTab==='gear' ? '' : 'none';
+  document.getElementById('clothingList').style.display = activeEquipmentTab==='clothing' ? '' : 'none';
+  document.getElementById('equipmentIntroText').textContent = activeEquipmentTab==='gear'
+    ? 'Only gear you own is shown here. Equip a setup to target its species.'
+    : 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed \u2014 a full 5-piece set from one species is a 20% boost.';
+  if(activeEquipmentTab==='clothing') renderClothing(); else renderOwnedEquipment();
+}
+document.getElementById('viewEquipmentBtn').addEventListener('click', function(){ setEquipmentTab(activeEquipmentTab); showScreen('screen-equipment'); });
 document.getElementById('backFromEquipment').addEventListener('click', function(){ showScreen('screen-dock'); });
+document.getElementById('equipTabGear').addEventListener('click', function(){ setEquipmentTab('gear'); });
+document.getElementById('equipTabClothing').addEventListener('click', function(){ setEquipmentTab('clothing'); });
 document.getElementById('shopTabBait').addEventListener('click', function(){ setShopTab('bait'); });
 document.getElementById('shopTabEquipment').addEventListener('click', function(){ setShopTab('equipment'); });
 document.getElementById('shopTabStorage').addEventListener('click', function(){ setShopTab('storage'); });
@@ -519,6 +535,52 @@ export function renderOwnedEquipment(){
       stopAutoFish();
       state.gear=eq.id; var b=baitForFish(eq.fishId); if(b) state.selectedBait=b.id;
       saveState(); updateHud(); updateGearCaption(); renderPlayer(document.getElementById('dockPlayerWrap'),true); renderOwnedEquipment(); playEquipSound(); showToast(eq.name+' equipped.');
+    });
+  });
+}
+
+export function renderClothing(){
+  var list=document.getElementById('clothingList'); list.innerHTML='';
+  var bonusPct = Math.round(totalClothingSpeedBonus()*100);
+  var summary=document.createElement('div'); summary.className='clothing-summary';
+  summary.textContent = 'Total fishing speed bonus from equipped clothing: +'+bonusPct+'%';
+  list.appendChild(summary);
+  CLOTHING_SLOTS.forEach(function(slot){
+    var options = clothingItemsForSlot(slot);
+    if(!options.length) return; // no pieces exist for this slot yet (only shrimp has a set so far)
+    var equippedId = equippedClothingId(slot);
+    var section=document.createElement('div'); section.className='clothing-slot-section';
+    var label=document.createElement('div'); label.className='clothing-slot-label'; label.textContent=slot.charAt(0).toUpperCase()+slot.slice(1);
+    section.appendChild(label);
+    options.forEach(function(item){
+      var owned = isClothingOwned(item.id);
+      var equipped = equippedId === item.id;
+      var fish = fishById(item.fishId);
+      var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
+      card.innerHTML =
+        '<div class="shop-icon">'+(owned?item.icon:'\u2754')+'</div>'+
+        '<div class="shop-body">'+
+          '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
+          '<div class="shop-desc">'+(owned
+            ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed. '+item.flavor)
+            : ('Not discovered yet \u2014 this is a rare mythic catch from '+(fish?fish.name:'this species')+'.'))+'</div>'+
+        '</div>'+
+        (owned ? (equipped
+          ? '<button class="shop-buy" data-unequip-clothing="'+slot+'">Unequip</button>'
+          : '<button class="shop-buy" data-equip-clothing="'+item.id+'">Equip</button>') : '');
+      section.appendChild(card);
+    });
+    list.appendChild(section);
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-equip-clothing]'), function(btn){
+    btn.addEventListener('click', function(){
+      if(equipClothing(btn.getAttribute('data-equip-clothing'))){ playEquipSound(); showToast('Equipped.'); renderClothing(); }
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-unequip-clothing]'), function(btn){
+    btn.addEventListener('click', function(){
+      unequipClothingSlot(btn.getAttribute('data-unequip-clothing'));
+      playEquipSound(); showToast('Unequipped.'); renderClothing();
     });
   });
 }

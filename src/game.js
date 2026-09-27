@@ -13,7 +13,7 @@
 
 
 import { playCatchSound, playCollectionSound, playLevelSound, playMegaRareSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
-import { BASE_CAST_MS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, baitById, baitForFish, equipmentById, equipmentForFish, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
+import { BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -404,9 +404,46 @@ export function rollFish(){
   return target;
 }
 
+// ---------- Mythic clothing ----------
+// state.equippedClothing looks like {hat:'mythic_shrimp_hat', shirt:null, ...}.
+// Only items the player has actually found (state.collectionLog[id]) can be
+// equipped, and only one item per slot at a time. Bonuses stack additively
+// across slots and reduce cast time in castDurationMs() below.
+export function equippedClothingId(slot){
+  return (state.equippedClothing && state.equippedClothing[slot]) || null;
+}
+export function isClothingOwned(itemId){
+  return !!(state.collectionLog && state.collectionLog[itemId]);
+}
+export function equipClothing(itemId){
+  var item = clothingItems().filter(function(c){ return c.id===itemId; })[0];
+  if(!item || !isClothingOwned(itemId)) return false;
+  if(!state.equippedClothing) state.equippedClothing = {};
+  state.equippedClothing[item.slot] = itemId;
+  saveState();
+  return true;
+}
+export function unequipClothingSlot(slot){
+  if(!state.equippedClothing) state.equippedClothing = {};
+  state.equippedClothing[slot] = null;
+  saveState();
+}
+export function totalClothingSpeedBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.speedBonus || 0;
+  });
+  return Math.min(total, 0.9); // safety ceiling as more sets get added later
+}
+
 export function castDurationMs(fish){
   var base = currentBaitCount() > 0 ? BASE_CAST_MS : NO_BAIT_CAST_MS;
-  return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp'));
+  var clothingMultiplier = 1 - totalClothingSpeedBonus();
+  return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp') * clothingMultiplier);
 }
 
 export function grantFish(fish, forcedQuality){

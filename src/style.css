@@ -539,6 +539,16 @@
   .equipment-owned-card .shop-body{ flex:1 1 auto; min-width:0; }
   .equipment-owned-card .shop-desc{ color:var(--silver); font-size:11px; line-height:1.35; margin-top:3px; }
   .equipment-owned-card .shop-owned{ font-size:10px; margin-top:4px; color:var(--gold); font-weight:800; }
+  .clothing-list{ margin-top:18px; }
+  .clothing-summary{ background:rgba(217,164,65,.14); border:1px solid rgba(217,164,65,.4); color:var(--gold); font-weight:800; font-size:12.5px; padding:10px 14px; border-radius:12px; margin-bottom:16px; }
+  .clothing-slot-section{ margin-bottom:16px; }
+  .clothing-slot-label{ font-family:'Fraunces',serif; color:var(--cream); font-size:13px; text-transform:uppercase; letter-spacing:.05em; margin-bottom:7px; opacity:.75; }
+  .clothing-item-card{ display:flex; align-items:center; gap:12px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:12px; margin-bottom:8px; }
+  .clothing-item-card.selected-item{ border-color:rgba(217,164,65,.55); background:rgba(217,164,65,.08); }
+  .clothing-item-card.locked{ opacity:.55; }
+  .clothing-item-card .shop-icon{ flex:0 0 auto; }
+  .clothing-item-card .shop-body{ flex:1 1 auto; min-width:0; }
+  .clothing-item-card .shop-desc{ color:var(--silver); font-size:11px; line-height:1.35; margin-top:3px; }
   .catch-inspect-card .inspect-stars{ font-size:24px; margin:5px 0; }
   .catch-inspect-card .inspect-float{ font-family:monospace; font-size:14px; color:var(--silver); margin-bottom:8px; }
   .shop-only-bait{ margin-top:8px; }

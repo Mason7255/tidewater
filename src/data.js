@@ -206,7 +206,30 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it."}
 ];
 var MYTHIC_LOG_ITEMS = [];
+export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
+// Fish ids in this list get 5 named, wearable mythic pieces (one per slot in
+// CLOTHING_SLOTS) instead of the generic "Mythic 1-5" flavor items below.
+// Each piece's speedBonus stacks additively and reduces cast time — see
+// totalClothingSpeedBonus()/castDurationMs() in game.js. Add a fish's id
+// here (and a matching entry in CLOTHING_SETS) to extend clothing to it.
+var CLOTHING_FISH_IDS = ['shrimp'];
+var CLOTHING_SETS = {
+  shrimp: [
+    {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.'},
+    {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.'},
+    {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.'},
+    {slot:'shoes', name:'Shrimp-foot Boots', icon:'🦐', flavor:'Somehow lets you feel the current through the sole.'},
+    {slot:'gloves', name:'Shrimp-claw Gloves', icon:'🦐', flavor:'A firmer grip on the rod than you have ever had.'}
+  ]
+};
+var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 FISH.forEach(function(fish){
+  if(CLOTHING_FISH_IDS.indexOf(fish.id) >= 0){
+    CLOTHING_SETS[fish.id].forEach(function(piece){
+      MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+piece.slot, fishId:fish.id, slot:piece.slot, name:piece.name, icon:piece.icon, chance:0.001, mythic:true, clothing:true, speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, flavor:piece.flavor});
+    });
+    return;
+  }
   for(var mythicNumber=1;mythicNumber<=5;mythicNumber++){
     MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.001, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
   }
@@ -215,6 +238,9 @@ COLLECTION_LOG_ITEMS = COLLECTION_LOG_ITEMS.concat(MYTHIC_LOG_ITEMS);
 export function logItemById(id){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){ if(COLLECTION_LOG_ITEMS[i].id===id) return COLLECTION_LOG_ITEMS[i]; } return null; }
 export function logItemForFish(fishId){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){ if(COLLECTION_LOG_ITEMS[i].fishId===fishId) return COLLECTION_LOG_ITEMS[i]; } return null; }
 export function mythicLogItemsForFish(fishId){ return MYTHIC_LOG_ITEMS.filter(function(item){ return item.fishId===fishId; }); }
+export function clothingItems(){ return MYTHIC_LOG_ITEMS.filter(function(item){ return !!item.clothing; }); }
+export function clothingItemsForSlot(slot){ return clothingItems().filter(function(item){ return item.slot===slot; }); }
+
 
 // Challenges are tiered. Claiming one removes it and immediately advances that
 // challenge family to its next target. When the final tier is claimed, that
