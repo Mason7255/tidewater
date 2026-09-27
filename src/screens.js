@@ -6,8 +6,8 @@
 
 
 import { playBuySound, playEquipSound } from './audio.js';
-import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItemsForSlot, equipmentById, isBackgroundUnlocked, trinketItems } from './data.js';
-import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipTrinket, updateGearCaption, updateHud } from './game.js';
+import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, trinketItems, upgradeById } from './data.js';
+import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipTrinket, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showCoinGain, showScreen, showToast } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
@@ -275,7 +275,12 @@ export function renderLog(){
     var fish = fishById(item.fishId);
     var tile = document.createElement('div');
     tile.className = 'fish-tile' + (owned ? '' : ' locked');
-    var subtext = owned ? '×'+owned+' · 1/5000 drop' : ('From ' + (fish ? fish.name : '?')+' · 1/5000 drop');
+    // Odds text used to be hardcoded to "1/5000" for every item, which was
+    // only right by coincidence for uniques (chance 0.0002 = 1/5000) and
+    // wrong for mythics (chance 0.001 = 1/1000). Compute it from the item's
+    // real chance instead so it's correct for both.
+    var oddsText = '1/'+Math.round(1/item.chance).toLocaleString()+' drop';
+    var subtext = owned ? '×'+owned+' · '+oddsText : ('From ' + (fish ? fish.name : '?')+' · '+oddsText);
     tile.innerHTML =
       '<div class="dot" style="background:rgba(217,164,65,0.16); color:var(--gold);">'+(owned ? item.icon : '?')+'</div>' +
       '<div class="fname">'+(owned ? item.name : '???')+'</div>' +
@@ -338,8 +343,8 @@ export function renderChallenges(){
 // even if a shop-rendering problem occurs.
 export var activeShopTab = 'equipment';
 export function openTackleShop(tab){
-  activeShopTab = ['equipment','bait','storage','customization'].indexOf(tab) >= 0 ? tab : activeShopTab;
-  ['Equipment','Bait','Storage','Customization'].forEach(function(name){
+  activeShopTab = ['equipment','bait','storage','consumables','customization'].indexOf(tab) >= 0 ? tab : activeShopTab;
+  ['Equipment','Bait','Storage','Consumables','Customization'].forEach(function(name){
     var id='shopTab'+name, active=activeShopTab===name.toLowerCase();
     document.getElementById(id).classList.toggle('active',active);
     document.getElementById(id).setAttribute('aria-selected',active?'true':'false');
@@ -404,11 +409,12 @@ document.getElementById('equipTabTrinkets').addEventListener('click', function()
 document.getElementById('shopTabBait').addEventListener('click', function(){ setShopTab('bait'); });
 document.getElementById('shopTabEquipment').addEventListener('click', function(){ setShopTab('equipment'); });
 document.getElementById('shopTabStorage').addEventListener('click', function(){ setShopTab('storage'); });
+document.getElementById('shopTabConsumables').addEventListener('click', function(){ setShopTab('consumables'); });
 document.getElementById('shopTabCustomization').addEventListener('click', function(){ setShopTab('customization'); });
 
 export function setShopTab(tab){
-  activeShopTab = ['equipment','bait','storage','customization'].indexOf(tab) >= 0 ? tab : 'equipment';
-  ['Equipment','Bait','Storage','Customization'].forEach(function(name){
+  activeShopTab = ['equipment','bait','storage','consumables','customization'].indexOf(tab) >= 0 ? tab : 'equipment';
+  ['Equipment','Bait','Storage','Consumables','Customization'].forEach(function(name){
     var id='shopTab'+name, active=activeShopTab===name.toLowerCase();
     document.getElementById(id).classList.toggle('active',active);
     document.getElementById(id).setAttribute('aria-selected',active?'true':'false');
@@ -520,6 +526,23 @@ export function renderShop(){
         state.coins-=cost; state.storageTier=tier;
         saveState(); updateHud(); renderShop(); playBuySound();
         showToast('Upgraded to '+storageName()+'. Now holds '+storageCapacity()+' fish.');
+      });
+    });
+  } else if(activeShopTab === 'consumables') {
+    var consumablesHeading=document.createElement('div'); consumablesHeading.className='shop-section-title'; consumablesHeading.textContent='CONSUMABLES'; list.appendChild(consumablesHeading);
+    CONSUMABLES.forEach(function(c){
+      var owned=state.consumableCounts[c.id]||0;
+      var item=document.createElement('div'); item.className='shop-item';
+      item.innerHTML='<div class="shop-icon">'+c.icon+'</div><div class="shop-body"><div class="shop-title">'+c.name+' — pack of '+c.packAmount+'</div><div class="shop-desc">'+c.flavor+' '+(c.effect==='quality'?'+'+Math.round(c.magnitude*100)+'% catch quality':'+'+Math.round(c.magnitude*100)+'% cast speed')+' for 60 seconds per use. You have '+owned+'.</div></div><button class="shop-buy" data-buyconsumable="'+c.id+'" '+(state.coins<c.packCost?'disabled':'')+'>'+c.packCost+' ⛃</button>';
+      list.appendChild(item);
+    });
+    Array.prototype.forEach.call(list.querySelectorAll('[data-buyconsumable]'),function(btn){
+      btn.addEventListener('click',function(){
+        var c=consumableById(btn.getAttribute('data-buyconsumable'));
+        if(!c || state.coins<c.packCost) return;
+        state.coins-=c.packCost; state.consumableCounts[c.id]=(state.consumableCounts[c.id]||0)+c.packAmount;
+        saveState(); updateHud(); renderShop(); renderConsumablesRow(); playBuySound();
+        showToast('Bought '+c.packAmount+' '+c.name.toLowerCase()+'.');
       });
     });
   } else {
@@ -650,7 +673,10 @@ export function renderBackgrounds(){
     var selected = (state.selectedBackground || 'default') === bg.id;
     var card=document.createElement('div'); card.className='background-card'+(selected?' selected-item':'')+(!unlocked?' locked':'');
     var unlockText = '';
-    if(!unlocked && bg.unlock && bg.unlock.type === 'catch'){
+    if(!unlocked && bg.unlock && bg.unlock.type === 'total'){
+      var totalProgress = totalFishCaught();
+      unlockText = 'Catch '+bg.unlock.amount+' fish to unlock. ('+totalProgress+' / '+bg.unlock.amount+')';
+    } else if(!unlocked && bg.unlock && bg.unlock.type === 'catch'){
       var fish = fishById(bg.unlock.fishId);
       var progress = state.caught[bg.unlock.fishId] || 0;
       unlockText = 'Catch '+bg.unlock.amount+' '+(fish?fish.name.toLowerCase():bg.unlock.fishId)+' to unlock. ('+progress+' / '+bg.unlock.amount+')';
@@ -668,6 +694,54 @@ export function renderBackgrounds(){
   Array.prototype.forEach.call(grid.querySelectorAll('[data-select-bg]'), function(btn){
     btn.addEventListener('click', function(){
       if(selectBackground(btn.getAttribute('data-select-bg'))){ showToast('Background changed.'); renderBackgrounds(); }
+    });
+  });
+}
+
+// ---------- Upgrades ----------
+// A deliberate coin-purchased track (see UPGRADES in data.js), separate from
+// the luck-based clothing/trinket bonuses. Each entry here is a flat one-time
+// buy; Auto-Sell additionally exposes a star-threshold picker once owned.
+document.getElementById('viewUpgradesBtn').addEventListener('click', function(){ renderUpgrades(); showScreen('screen-upgrades'); });
+document.getElementById('backFromUpgrades').addEventListener('click', function(){ showScreen('screen-dock'); });
+
+var AUTO_SELL_THRESHOLD_LABELS = ['Off', '1★ and below', '2★ and below', '3★ and below'];
+
+export function renderUpgrades(){
+  var list=document.getElementById('upgradesList'); list.innerHTML='';
+  UPGRADES.forEach(function(up){
+    var owned=!!state.upgrades[up.id], locked=playerLevel()<up.level;
+    var item=document.createElement('div'); item.className='shop-item';
+    var buttonText=owned ? 'Owned' : (locked ? 'Locked' : up.cost+' ⛃');
+    var disabled=owned || locked || state.coins<up.cost;
+    item.innerHTML='<div class="shop-icon">'+up.icon+'</div><div class="shop-body"><div class="shop-title">'+up.name+'</div><div class="shop-desc">'+up.desc+'</div>'+(owned?'<div class="shop-owned">Owned</div>':(locked?'<div class="shop-owned">Unlocks at Fishing Lv '+up.level+'</div>':''))+'</div><button class="shop-buy" data-buyupgrade="'+up.id+'" '+(disabled?'disabled':'')+'>'+buttonText+'</button>';
+    list.appendChild(item);
+    if(owned && up.id === 'auto_sell'){
+      var panel=document.createElement('div'); panel.className='shop-item'; panel.style.marginTop='-6px';
+      var thresholdRow='<div class="shop-body" style="width:100%;"><div class="shop-title">Auto-sell threshold</div><div class="shop-desc" style="margin-bottom:10px;">Anything caught at or below this rating sells itself automatically. 4-5★ trophy-tier catches are never touched.</div><div class="upgrade-threshold-row">'+
+        AUTO_SELL_THRESHOLD_LABELS.map(function(label,i){
+          return '<button class="btn-tiny'+(state.autoSellThreshold===i?' gold':' ghost')+'" data-set-autosell="'+i+'">'+label+'</button>';
+        }).join('')+
+      '</div></div>';
+      panel.innerHTML=thresholdRow;
+      list.appendChild(panel);
+    }
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-buyupgrade]'),function(btn){
+    btn.addEventListener('click',function(){
+      var up=upgradeById(btn.getAttribute('data-buyupgrade'));
+      if(!up || state.upgrades[up.id] || playerLevel()<up.level || state.coins<up.cost) return;
+      state.coins-=up.cost; state.upgrades[up.id]=true;
+      saveState(); updateHud(); renderUpgrades();
+      playBuySound();
+      showToast('Bought '+up.name+'.');
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-set-autosell]'),function(btn){
+    btn.addEventListener('click',function(){
+      state.autoSellThreshold = Math.max(0, Math.min(3, parseInt(btn.getAttribute('data-set-autosell'),10) || 0));
+      saveState(); renderUpgrades();
+      showToast(state.autoSellThreshold===0 ? 'Auto-sell turned off.' : 'Auto-selling '+state.autoSellThreshold+'★ and below.');
     });
   });
 }

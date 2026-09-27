@@ -116,6 +116,7 @@
     <nav class="menu-rail" id="menuRail" aria-label="Game menu">
       <button class="rail-btn" id="railInventoryBtn" type="button">Inventory</button>
       <button class="rail-btn" id="viewShopBtn" type="button">Shop</button>
+      <button class="rail-btn" id="viewUpgradesBtn" type="button">Upgrades</button>
       <button class="rail-btn" id="viewEquipmentBtn" type="button">Equipment</button>
       <button class="rail-btn" id="viewTrophyBtn" type="button">Trophies</button>
       <button class="rail-btn" id="viewRecordsBtn" type="button">Records</button>
@@ -160,6 +161,10 @@
     <span id="baitCornerCount">0</span> bait
   </span>
 </div>
+  <div class="consumables-row" id="consumablesRow">
+    <button class="consumable-quick-btn" type="button" data-use-consumable="six_pack" title="Six-Pack">🍺 ×0</button>
+    <button class="consumable-quick-btn" type="button" data-use-consumable="cigarettes" title="Pack of Cigarettes">🚬 ×0</button>
+  </div>
   <button class="scene-inventory-btn" id="sceneInventoryBtn"
     type="button" title="Open inventory" aria-label="Open inventory">🎒</button>
 
@@ -258,6 +263,7 @@
       <button class="shop-tab active" id="shopTabEquipment" type="button" role="tab" aria-selected="true">Equipment</button>
       <button class="shop-tab" id="shopTabBait" type="button" role="tab" aria-selected="false">Bait</button>
       <button class="shop-tab" id="shopTabStorage" type="button" role="tab" aria-selected="false">Storage</button>
+      <button class="shop-tab" id="shopTabConsumables" type="button" role="tab" aria-selected="false">Consumables</button>
       <button class="shop-tab" id="shopTabCustomization" type="button" role="tab" aria-selected="false">Customization</button>
     </div>
     <div id="shopList"></div>
@@ -276,6 +282,14 @@
     <div class="equipment-list" id="ownedEquipmentList"></div>
     <div class="clothing-list" id="clothingList" style="display:none;"></div>
     <div class="clothing-list" id="trinketsList" style="display:none;"></div>
+  </section>
+
+  <!-- UPGRADES -->
+  <section class="screen panel" id="screen-upgrades">
+    <button class="nav-back" id="backFromUpgrades">✕ Close</button>
+    <h2>Upgrades</h2>
+    <p class="intro-text" style="margin-bottom:0;">Spend coins on permanent upgrades to how you fish.</p>
+    <div id="upgradesList" style="margin-top:16px;"></div>
   </section>
 
   <!-- BACKGROUNDS -->

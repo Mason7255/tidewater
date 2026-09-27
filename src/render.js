@@ -7,7 +7,7 @@
 
 
 import { CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, HATS, OUTFIT_COLORS, equipmentById } from './data.js';
-import { state } from './state.js';
+import { isBuffActive, state } from './state.js';
 
 export var toastEl = document.getElementById('toast');
 export var toastTimer = null;
@@ -42,6 +42,15 @@ export function hatIcon(id){
   for(var i=0;i<HATS.length;i++){ if(HATS[i].id===id) return HATS[i].icon; }
   return '';
 }
+// Cached the moment a full avatar grid is built, so updatePlayerBuffAccessories()
+// (called every second, and right after using a consumable) can flip the
+// exact same cells on/off without recomputing shirt/skin colors from scratch.
+// Each entry is [x, y, offColor, onColor] -- offColor is whatever the
+// underlying body art actually paints there (sleeve, skin, or bare
+// background), so toggling a buff off restores the real pixel instead of
+// punching a transparent hole in the sleeve/hand.
+var lastBuffCellPlan = null;
+
 export function pixelAvatarHTML(){
   var shirt = shirtById(state.shirt || 'shirt_coral').color;
   var skin = skinById(state.skin || 'skin_light').color;
@@ -64,6 +73,38 @@ export function pixelAvatarHTML(){
     else if(hat.name.indexOf('Bucket')>=0){ paint(7,2,10,3,hc); paint(5,5,14,2,hc); }
     else { paint(8,2,8,3,hc); paint(6,4,12,2,hc); paint(16,6,4,1,hc); }
   }
+  // Six-Pack (mug in the left/free hand -- the right hand holds the rod) and
+  // Cigarettes (a few pixels at the mouth corner, plus a wisp of smoke).
+  // These are painted into THIS SAME grid, at cell coordinates that sit
+  // right on top of the sleeve/hand and the mouth -- not a separate
+  // absolutely-positioned element -- so they can never end up floating
+  // somewhere else on the page; they're physically part of the character.
+  var foam='#fff8e6', amber='#e8a33d', amberDk='#c9812a';
+  var beerPlan = [
+    [4,15,shirt,foam],   [5,15,shirt,foam],
+    [4,16,shirt,amber],  [5,16,shirt,amber],
+    [4,17,shirt,amber],  [5,17,shirt,amber],
+    [3,17,'transparent',amberDk],
+    [4,18,skin,amberDk], [5,18,skin,amberDk],
+    [4,19,skin,amberDk], [5,19,skin,amberDk]
+  ];
+  var cigPlan = [
+    [15,11,skin,'#f5f0e6'],
+    [16,11,'transparent','#f5f0e6'],
+    [17,11,'transparent','#ff9d4d'],
+    [18,11,'transparent','#ff5a3d']
+  ];
+  var smokePlan = [
+    [18,9,'transparent','rgba(225,225,225,.8)'],
+    [19,8,'transparent','rgba(225,225,225,.5)']
+  ];
+  var beerOn = isBuffActive('six_pack'), cigOn = isBuffActive('cigarettes');
+  if(beerOn) beerPlan.forEach(function(c){ grid[c[1]][c[0]] = c[3]; });
+  if(cigOn){
+    cigPlan.forEach(function(c){ grid[c[1]][c[0]] = c[3]; });
+    smokePlan.forEach(function(c){ grid[c[1]][c[0]] = c[3]; });
+  }
+  lastBuffCellPlan = { beer:beerPlan, cig:cigPlan, smoke:smokePlan };
   var cells='';
   for(var y=0;y<24;y++) for(var x=0;x<24;x++) cells += '<i class="px" style="background:'+grid[y][x]+'"></i>';
   return '<div class="pixel-avatar">'+cells+'</div>';
@@ -83,6 +124,30 @@ export function renderPlayer(container, withGear){
   }
   var playerClass = withGear && kind === 'gear-trap' ? 'player has-trap' : 'player';
   container.innerHTML = '<div class="'+playerClass+'">'+gearHtml+pixelAvatarHTML()+'</div>';
+  updatePlayerBuffAccessories();
+}
+// Flips the mug/cigarette/smoke cells (painted into pixelAvatarHTML()'s grid
+// above) on or off to match the current buff state, without rebuilding the
+// whole avatar -- so an in-progress rod-cast animation elsewhere in .player
+// isn't interrupted by this running every second. Not scoped to one
+// container: renderPlayer() runs for both the dock scene and the
+// character-creation preview, and both share the same state.shirt/state.skin,
+// so one cached cell plan is valid for every '.pixel-avatar' found.
+export function updatePlayerBuffAccessories(){
+  if(!lastBuffCellPlan) return;
+  var beerOn = isBuffActive('six_pack'), cigOn = isBuffActive('cigarettes');
+  function apply(plan, on){
+    plan.forEach(function(c){
+      var idx = c[1]*24+c[0];
+      Array.prototype.forEach.call(document.querySelectorAll('.pixel-avatar'), function(avatar){
+        var el = avatar.children[idx];
+        if(el) el.style.background = on ? c[3] : c[2];
+      });
+    });
+  }
+  apply(lastBuffCellPlan.beer, beerOn);
+  apply(lastBuffCellPlan.cig, cigOn);
+  apply(lastBuffCellPlan.smoke, cigOn);
 }
 
 export function shade(hex, percent){

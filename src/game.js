@@ -12,12 +12,16 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playCatchSound, playCollectionSound, playLevelSound, playMegaRareSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, xpTable } from './data.js';
+import { playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
+import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
-import { renderPlayer, showCoinGain, showToast } from './render.js';
+import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
-import { CATCH_HISTORY_LIMIT, fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, nextCatchId, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, qualityInfo, rollQuality, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
+import { CATCH_HISTORY_LIMIT, buffRemainingMs, fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, isBuffActive, nextCatchId, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, qualityInfo, rollQuality, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
+
+// Fishing levels that get the extended "milestone" level-up fanfare instead
+// of the regular one (see playLevelSound in audio.js).
+var LEVEL_MILESTONES = [10, 25, 50, 75, 99];
 
 export var swatchRow = document.getElementById('swatchRow');
 export var hatRow = document.getElementById('hatRow');
@@ -68,7 +72,13 @@ export function initCharacterCreationUI(){
 export function totalFishCaught(){ var t=0; for(var k in state.caught){ if(state.caught.hasOwnProperty(k)) t+=state.caught[k]; } return t; }
 export function playerLevel(){ return levelForXp(state.xp); }
 var STORAGE_NAMES = ['Pockets','Snack tray','Wobbly basket','Fancy cooler','Fish tote','Rolling fish cart','Tiny fish wagon','Dockside locker','Suspiciously large basket','Portable fish shed','Harbor locker','Angler trunk','Boat box','Captain\'s chest','Sea pantry','Floating fish closet','Harbor warehouse','Dock warehouse','Fish depot','Aquatic vault'];
-export function storageUnlockedTier(){ return Math.floor((playerLevel()-1)/5); }
+// Fish/equipment tiers unlock at clean multiples of 5 (Lv 5, 10, 15, ... 90).
+// This used to be Math.floor((playerLevel()-1)/5), which unlocked each
+// storage tier one level AFTER its matching equipment tier (Lv 6, 11, 16...
+// instead of 5, 10, 15) -- so a level-up into new gear never had the
+// matching storage tier available yet. Math.floor(playerLevel()/5) lines
+// the two up: storage tier N unlocks at the same level as equipment tier N.
+export function storageUnlockedTier(){ return Math.floor(playerLevel()/5); }
 export function storageUpgradeLevel(){ return Math.min(Math.max(0,Number(state.storageTier)||0),storageUnlockedTier()); }
 export function storageCapacity(){ return 25 + storageUpgradeLevel()*5; }
 export function storageNameForTier(tier){ return STORAGE_NAMES[Math.min(Math.max(0,tier||0),STORAGE_NAMES.length-1)]; }
@@ -145,6 +155,7 @@ export function updateHud(){
       : 'Fishing level ' + lvl + ' · ' + into + '/' + span + ' xp';
     fishLevelFill.style.width = pct + '%';
   }
+  renderConsumablesRow();
 }
 
 export function updateGearCaption(){
@@ -296,7 +307,7 @@ function dismissRareCard(card){
     startAutoFish();
   }
 }
-export function showMegaRareFeedback(item, fish){
+export function showMegaRareFeedback(item, fish, isNew){
   var layer = rareLayer();
   var reveal = document.createElement('div');
   reveal.className = 'mega-rare-reveal rare-persist';
@@ -312,7 +323,7 @@ export function showMegaRareFeedback(item, fish){
     reveal.appendChild(particle);
   }
   reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
-  playMegaRareSound();
+  if(item.mythic) playMythicFoundSound(isNew); else playUniqueFoundSound(isNew);
 }
 export function showLegendaryFeedback(fish, stars, float, catchId){
   var layer = rareLayer();
@@ -440,9 +451,17 @@ export function totalClothingSpeedBonus(){
   return Math.min(total, 0.9); // safety ceiling as more sets get added later
 }
 
+// Pack of Cigarettes: a temporary, timed version of a clothing/trinket
+// speed bonus -- see isBuffActive() in state.js. Stacks additively with
+// those the same way clothing and trinkets stack with each other.
+export function totalConsumableSpeedBonus(){
+  if(!isBuffActive('cigarettes')) return 0;
+  var cig = consumableById('cigarettes');
+  return cig ? (cig.magnitude || 0) : 0;
+}
 export function castDurationMs(fish){
   var base = currentBaitCount() > 0 ? BASE_CAST_MS : NO_BAIT_CAST_MS;
-  var totalSpeedBonus = Math.min(totalClothingSpeedBonus() + totalTrinketSpeedBonus(), 0.9);
+  var totalSpeedBonus = Math.min(totalClothingSpeedBonus() + totalTrinketSpeedBonus() + totalConsumableSpeedBonus(), 0.9);
   var speedMultiplier = 1 - totalSpeedBonus;
   return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp') * speedMultiplier);
 }
@@ -498,6 +517,53 @@ export function trinketNoBaitChance(){
   });
   return Math.min(chance, 0.95);
 }
+
+// ---------- Consumables (quick-use row on the dock) ----------
+// Buying happens in the shop (screens.js); using one happens right here from
+// the dock scene, one click. Using another while a buff is already running
+// just resets it to a fresh 60 seconds (and consumes another unit) rather
+// than stacking -- "topping off the drink" instead of layering effects.
+export function useConsumable(id){
+  var c = consumableById(id);
+  if(!c) return false;
+  var count = state.consumableCounts[c.id] || 0;
+  if(count <= 0) return false;
+  state.consumableCounts[c.id] = count - 1;
+  state.activeBuffs[c.id] = Date.now() + c.duration;
+  saveState();
+  renderConsumablesRow();
+  updatePlayerBuffAccessories();
+  showToast(c.useMessage || ('Used ' + c.name + '.'));
+  return true;
+}
+export function renderConsumablesRow(){
+  var row = document.getElementById('consumablesRow');
+  if(!row) return;
+  CONSUMABLES.forEach(function(c){
+    var btn = row.querySelector('[data-use-consumable="'+c.id+'"]');
+    if(!btn) return;
+    var count = state.consumableCounts[c.id] || 0;
+    var active = isBuffActive(c.id);
+    if(active){
+      var secs = Math.max(1, Math.ceil(buffRemainingMs(c.id) / 1000));
+      btn.textContent = c.icon + ' ' + secs + 's';
+    } else {
+      btn.textContent = c.icon + ' ×' + count;
+    }
+    btn.classList.toggle('active-buff', active);
+    btn.disabled = count <= 0;
+    btn.title = c.name + ' — ' + c.flavor;
+  });
+}
+Array.prototype.forEach.call(document.querySelectorAll('#consumablesRow [data-use-consumable]'), function(btn){
+  btn.addEventListener('click', function(){ useConsumable(btn.getAttribute('data-use-consumable')); });
+});
+// Countdown display only -- isBuffActive()/buffRemainingMs() check Date.now()
+// directly wherever a bonus is actually applied, so gameplay is correct even
+// if this tick is paused (backgrounded tab) or hasn't fired yet. Also keeps
+// the beer/cigarette accessory on the fisherman itself in sync so it
+// disappears within a second of the buff actually expiring.
+setInterval(function(){ renderConsumablesRow(); updatePlayerBuffAccessories(); }, 1000);
 
 // ---------- Dock scene background ----------
 // Paints whichever background is currently selected into #dockScene. Called
@@ -563,8 +629,7 @@ export function grantFish(fish, forcedQuality){
     var isNewLogItem = !state.collectionLog[logItem.id];
     state.collectionLog[logItem.id] = (state.collectionLog[logItem.id]||0) + 1;
     setTimeout(function(){
-      playCollectionSound();
-      showMegaRareFeedback(logItem, fish);
+      showMegaRareFeedback(logItem, fish, isNewLogItem);
       showToast((isNewLogItem ? 'New collection log item! ' : 'Found another ') + logItem.icon + ' ' + logItem.name + '.');
     }, isNewLogItem ? 1400 : 1100);
   }
@@ -573,11 +638,24 @@ export function grantFish(fish, forcedQuality){
     var isNewMythic = !state.collectionLog[mythicItem.id];
     state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
     setTimeout(function(){
-      playCollectionSound();
-      showMegaRareFeedback(mythicItem, fish);
+      showMegaRareFeedback(mythicItem, fish, isNewMythic);
       showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
     }, isNewMythic ? 1400 : 1100);
   });
+
+  // Auto-Sell (Upgrades tab): silently sells this catch right back off if
+  // it's at or below the threshold the player picked. Capped at 3 stars in
+  // state.js (setAutoSellThreshold clamps to 0-3) so a 4-5 star trophy-tier
+  // catch is never sold out from under the player without a look.
+  var autoSoldPrice = 0;
+  if(state.upgrades.auto_sell && state.autoSellThreshold > 0 && stars <= state.autoSellThreshold){
+    var autoIdx = state.inventory.findIndex(function(e){ return e.catchId === newCatchId; });
+    if(autoIdx !== -1){
+      autoSoldPrice = sellPrice(fish, state.inventory[autoIdx]);
+      state.coins += autoSoldPrice;
+      state.inventory.splice(autoIdx, 1);
+    }
+  }
 
   saveState();
   updateHud(); updateGearCaption(); renderInventoryStrip(); renderBaitChips(); renderCatchFeed();
@@ -593,8 +671,9 @@ export function grantFish(fish, forcedQuality){
   showCatchFeedback(fish, stars, fl, fish.xp, leveledUp, afterLevel);
   if(stars >= 4) showLegendaryFeedback(fish, stars, fl, newCatchId);
   playCatchSound(stars);
+  if(autoSoldPrice) showCoinGain(autoSoldPrice);
   if(leveledUp){
-    playLevelSound();
+    playLevelSound(LEVEL_MILESTONES.indexOf(afterLevel) >= 0);
     showToast('Level up! Fishing level ' + afterLevel + '.');
   }
   if(stars >= 4){

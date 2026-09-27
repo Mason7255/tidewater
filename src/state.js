@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, baitById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, startingOwnedEquipment } from './data.js';
+import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -32,6 +32,9 @@ export var state = {
   baitCounts:{},
   selectedBait:'shrimp_bait',
   upgrades:{},
+  autoSellThreshold:0, // 0 = off; 1-3 = auto-sell that star rating and below. 4-5 star trophy-tier catches are never auto-sold.
+  consumableCounts:{},
+  activeBuffs:{}, // {consumableId: expiresAtEpochMs}
   storageTier:0,
   xp:0,
   caught:{},
@@ -86,6 +89,12 @@ export function loadState(raw){
       state.upgrades = Object.assign({}, parsed.upgrades || {});
       delete state.upgrades.fastCast;
       delete state.upgrades.autoSell;
+      state.autoSellThreshold = Math.max(0, Math.min(3, Number(parsed.autoSellThreshold) || 0));
+      var migratedConsumables = makeConsumableCounts();
+      var oldConsumables = parsed.consumableCounts || {};
+      CONSUMABLES.forEach(function(c){ if(oldConsumables[c.id] != null) migratedConsumables[c.id] = oldConsumables[c.id]; });
+      state.consumableCounts = migratedConsumables;
+      state.activeBuffs = parsed.activeBuffs && typeof parsed.activeBuffs === 'object' ? parsed.activeBuffs : {};
       var migratedBaits = makeBaitCounts();
       var oldBaits = parsed.baitCounts || {};
       if(oldBaits.worms || oldBaits.shrimp_bait || oldBaits.cut_bait || oldBaits.glow_lure){
@@ -186,10 +195,30 @@ export function starsFromFloat(fl){
   fl = Math.max(0, Math.min(1, Number(fl) || 0));
   return fl < 0.001 ? 5 : (fl < 0.006 ? 4 : (fl < 0.206 ? 3 : (fl < 0.506 ? 2 : 1)));
 }
+// ---------- Consumable buffs ----------
+// state.activeBuffs stores an expiry timestamp per consumable id, checked
+// against Date.now() -- so a buff correctly reads as expired even if the
+// game was closed while it was running, no ticking timer required for
+// correctness (game.js still polls this once a second purely to update the
+// quick-use countdown display).
+export function isBuffActive(id){
+  return !!(state.activeBuffs && state.activeBuffs[id] && state.activeBuffs[id] > Date.now());
+}
+export function buffRemainingMs(id){
+  if(!isBuffActive(id)) return 0;
+  return Math.max(0, state.activeBuffs[id] - Date.now());
+}
 export function rollQuality(){
   // The float is the single source of truth. Lower is rarer/better.
   // 5-star begins at 1/1,000 odds and 4-star at 1/200 odds.
   var fl = Math.random();
+  // Six-Pack only nudges the quality/star roll -- it never touches the
+  // separate collection-log/mythic chance rolls in grantFish(), so it can't
+  // trivialize the rare-item hunt, only make an ordinary catch look nicer.
+  if(isBuffActive('six_pack')){
+    var sixPack = consumableById('six_pack');
+    fl *= (1 - (sixPack ? sixPack.magnitude : 0));
+  }
   return {stars:starsFromFloat(fl), float:fl};
 }
 function legacyFloatFromRating(rating){
@@ -263,12 +292,25 @@ export function fishDisplayEmoji(fish){
   var icons = {shrimp:'🦐', anchovies:'🐟', perch:'🐟', bluegill:'🐟', carp:'🐟', trout:'🐟', catfish:'🐟', crab:'🦀', lobster:'🦞', bass:'🐟', sturgeon:'🐟', koi:'🐠', squid:'🦑', octopus:'🐙', eel:'🐍', marlin:'🐟', dragonfish:'🐉', megalodon:'🦈', leviathan:'🐋'};
   return icons[id] || '🐟';
 }
+// Rarity gives a real bonus, but tuned so a *typical* catch sells close to
+// the fish's base coin value and only a genuinely good roll pays out
+// meaningfully more. The previous curve (1 + 11*quality^3) averaged out to
+// ~3.75x the base coin value on every single catch (the average of quality^3
+// over a uniform 0-1 roll is 0.25, so 1 + 11*0.25 = 3.75) -- not just on the
+// rare good ones. That was quietly inflating the whole economy far past what
+// the equipment/storage costs assumed, which is the real source of "I have
+// way too much money": it wasn't any one fish or upgrade price, it was every
+// single sale paying out almost 4x its listed value on average.
+//
+// This curve averages ~1.5x instead: a common 1-star catch (more than half of
+// all catches) nets ~1.0-1.15x, a rare 5-star catch (1-in-1,000) caps at
+// 3.5x. RATING_EXPONENT (from data.js) now actually drives the exponent,
+// rather than sitting there unused while a different one was hardcoded here.
+var SELL_QUALITY_BONUS = 2.5;
 export function sellPrice(fish, entry){
-  // Rarity now drives value directly. This preserves the old general price curve
-  // without keeping a hidden 1-100 rating in the game.
   var fl = floatForEntry(entry);
   var quality = Math.max(0, Math.min(1, 1-fl));
-  var mult = 1 + 11 * Math.pow(quality, 3);
+  var mult = 1 + SELL_QUALITY_BONUS * Math.pow(quality, RATING_EXPONENT);
   return Math.max(1, Math.round(fish.coins * mult));
 }
 
