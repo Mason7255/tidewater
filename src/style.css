@@ -518,8 +518,6 @@
   .records-row-name{ flex:1 1 auto; font-weight:700; font-size:13px; }
   .records-row-best{ font-weight:800; font-size:14px; color:var(--gold); }
 
-    .shop-header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
-    .shop-coin-balance{ display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; background:rgba(217,164,65,.16); border:1px solid rgba(217,164,65,.5); color:var(--gold); font-weight:800; font-size:13px; white-space:nowrap; }
     .shop-tabs{display:flex;gap:8px;margin:0 0 18px;position:sticky;top:0;z-index:5;background:var(--panel);padding:6px 0;}
     .shop-tab{flex:1;border:1px solid var(--line);background:var(--panel2);color:var(--muted);border-radius:10px;padding:11px 14px;font-weight:800;cursor:pointer;}
     .shop-tab.active{background:var(--gold);color:#1b160b;border-color:var(--gold);}
@@ -527,6 +525,8 @@
     .inventory-rarity-header:first-child{margin-top:0;}
     .inventory-rarity-count{margin-left:auto;color:var(--muted);font-size:12px;}
 
+    .shop-header-row{ display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+    .shop-coin-balance{ display:inline-flex; align-items:center; gap:4px; padding:6px 12px; border-radius:999px; background:rgba(217,164,65,.16); border:1px solid rgba(217,164,65,.5); color:var(--gold); font-weight:800; font-size:13px; white-space:nowrap; }
   .catch-feed-row{ position:relative; }
   .catch-feed-actions{ margin-left:auto; display:flex; flex-direction:column; gap:4px; }
   .catch-quick-sell{ padding:4px 6px; border-radius:7px; border:1px solid rgba(217,164,65,.4); background:rgba(217,164,65,.12); color:var(--gold); font-size:9px; font-weight:900; white-space:nowrap; }
@@ -549,6 +549,15 @@
   .clothing-item-card .shop-icon{ flex:0 0 auto; }
   .clothing-item-card .shop-body{ flex:1 1 auto; min-width:0; }
   .clothing-item-card .shop-desc{ color:var(--silver); font-size:11px; line-height:1.35; margin-top:3px; }
+  .backgrounds-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; margin-top:18px; }
+  .background-card{ display:flex; flex-direction:column; gap:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.09); border-radius:14px; padding:12px; }
+  .background-card.selected-item{ border-color:rgba(217,164,65,.55); background:rgba(217,164,65,.08); }
+  .background-card.locked{ opacity:.6; }
+  .background-preview{ width:100%; aspect-ratio:8/5; border-radius:10px; overflow:hidden; border:1px solid rgba(255,255,255,.12); }
+  .background-preview svg{ width:100%; height:100%; display:block; }
+  .background-preview-default{ width:100%; height:100%; background:linear-gradient(180deg, #3E9CA0 0%, #2C7A78 38%, #1B5A5C 40%, #123F41 100%); }
+  .background-body .shop-title{ font-size:13.5px; }
+  .background-body .shop-desc{ color:var(--silver); font-size:11px; line-height:1.35; margin-top:3px; }
   .catch-inspect-card .inspect-stars{ font-size:24px; margin:5px 0; }
   .catch-inspect-card .inspect-float{ font-family:monospace; font-size:14px; color:var(--silver); margin-bottom:8px; }
   .shop-only-bait{ margin-top:8px; }
@@ -596,6 +605,7 @@
     background:rgba(9,19,31,.78); border:2px solid rgba(255,216,74,.4); border-radius:6px;
     min-height:44px; padding:0 8px; display:flex; align-items:center; flex:0 0 auto;
   }
+  .rail-btn-bottom{ margin-top:auto; }
   .rail-btn:active{ background:var(--retro-yellow); color:#1a1300; text-shadow:none; transform:translate(1px,1px); }
   @media (hover:hover){ .rail-btn:hover{ border-color:var(--retro-yellow); } }
   @media (hover:none){ .swatch:hover{ transform:none; } .catch-feed-row:hover{ background:rgba(255,255,255,.05); } }
@@ -742,6 +752,7 @@
     padding: 5px 7px;
   }
 }
+
 /* Recent catches panel: sits below the scene on every screen size via the
    #screen-dock grid rule above (DOM order already places it right after
    .scene). Shrink it a bit on narrow screens so more fits without scrolling. */
@@ -749,4 +760,31 @@
   #screen-dock > .catch-feed-panel {
     margin: 12px 0;
   }
+}
+
+/* Custom SVG dock backgrounds (see BACKGROUNDS in data.js / applyBackground()
+   in game.js). Sits above the default gradient layers, below everything
+   else in the scene, and only paints anything once a background is
+   selected — #sceneBgCustom is empty and inert on the default background. */
+.scene-bg-custom {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.scene-bg-custom svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#dockScene[data-bg]:not([data-bg="default"]) > .sky-glow,
+#dockScene[data-bg]:not([data-bg="default"]) > .water-lines {
+  display: none;
+}
+/* The pixel-art shoreline band is a ::before on .scene itself (z-index:1),
+   which otherwise paints over .scene-bg-custom (z-index:0) even once the
+   layers above are hidden. Hide it too whenever a custom background is active. */
+#dockScene[data-bg]:not([data-bg="default"]):before {
+  display: none;
 }
