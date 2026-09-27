@@ -338,7 +338,12 @@ export function renderChallenges(){
 // even if a shop-rendering problem occurs.
 export var activeShopTab = 'equipment';
 export function openTackleShop(tab){
-  activeShopTab = ['equipment','bait','storage','customization'].indexOf(tab) >= 0 ? tab : 'equipment';
+  activeShopTab = ['equipment','bait','storage','customization'].indexOf(tab) >= 0 ? tab : activeShopTab;
+  ['Equipment','Bait','Storage','Customization'].forEach(function(name){
+    var id='shopTab'+name, active=activeShopTab===name.toLowerCase();
+    document.getElementById(id).classList.toggle('active',active);
+    document.getElementById(id).setAttribute('aria-selected',active?'true':'false');
+  });
   showScreen('screen-shop');
   try{
     renderShop();
@@ -366,7 +371,7 @@ export function quickBuySelectedBait(){
   showToast('Bought 5 '+b.name.toLowerCase()+'.');
 }
 
-document.getElementById('viewShopBtn').addEventListener('click', function(){ openTackleShop('equipment'); });
+document.getElementById('viewShopBtn').addEventListener('click', function(){ openTackleShop(activeShopTab); });
 var buyMoreBaitBtnEl = document.getElementById('buyMoreBaitBtn');
 if(buyMoreBaitBtnEl) buyMoreBaitBtnEl.addEventListener('click', quickBuySelectedBait);
 document.getElementById('backFromShop').addEventListener('click', function(){ showScreen('screen-dock'); });
@@ -435,6 +440,8 @@ export function renderCustomizationShop(){
 }
 
 export function renderShop(){
+  var coinBalanceEl = document.getElementById('shopCoinBalance');
+  if(coinBalanceEl) coinBalanceEl.textContent = state.coins+' ⛃';
   var list=document.getElementById('shopList'); list.innerHTML='';
   if(activeShopTab === 'equipment'){
     var heading=document.createElement('div'); heading.className='shop-section-title'; heading.textContent='EQUIPMENT'; list.appendChild(heading);

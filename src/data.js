@@ -151,17 +151,17 @@ export var EQUIPMENT = [
   {id:'trout_fly_rod', fishId:'trout', name:'Trout fly rod', icon:'🪶', cost:650, level:25, type:'rod', desc:'A balanced fly setup for fast, cold-water trout.'},
   {id:'catfish_bottom_rig', fishId:'catfish', name:'Catfish bottom rig', icon:'🪝', cost:900, level:30, type:'rig', desc:'Heavy terminal tackle for powerful bottom-feeders.'},
   {id:'crab_pot', fishId:'crab', name:'Crab pot', icon:'🪤', cost:1200, level:35, type:'trap', desc:'A sturdy baited pot for working crab grounds.'},
-  {id:'lobster_trap', fishId:'lobster', name:'Lobster trap', icon:'🦞', cost:1700, level:40, type:'trap', desc:'A commercial-style trap built for valuable lobster.'},
-  {id:'bass_spinning_rod', fishId:'bass', name:'Bass spinning rod', icon:'🎣', cost:2300, level:45, type:'rod', desc:'Medium-heavy spinning tackle for hard-fighting bass.'},
-  {id:'sturgeon_heavy_rig', fishId:'sturgeon', name:'Sturgeon heavy rig', icon:'⚓', cost:3000, level:50, type:'rig', desc:'A powerful bottom rig for large, ancient fish.'},
-  {id:'koi_carp_rod', fishId:'koi', name:'Koi match rod', icon:'🎣', cost:4000, level:55, type:'rod', desc:'Long, controlled tackle for valuable koi.'},
-  {id:'squid_jigging_rig', fishId:'squid', name:'Deep squid jigging rig', icon:'🦑', cost:5500, level:60, type:'deep', desc:'Specialized lights and jigs for deep squid.'},
-  {id:'octopus_pot', fishId:'octopus', name:'Octopus pot', icon:'🪤', cost:7000, level:65, type:'trap', desc:'A reinforced pot designed for strong, clever cephalopods.'},
-  {id:'eel_trap', fishId:'eel', name:'Deep eel trap', icon:'🪤', cost:9000, level:70, type:'trap', desc:'Heavy trap gear for deep, slippery eels.'},
-  {id:'marlin_trolling_rig', fishId:'marlin', name:'Marlin trolling rig', icon:'⚓', cost:12000, level:75, type:'biggame', desc:'Heavy offshore trolling gear for powerful billfish.'},
-  {id:'dragonfish_deep_rig', fishId:'dragonfish', name:'Dragonfish deep rig', icon:'🐉', cost:16000, level:80, type:'deep', desc:'Extreme deep-water tackle for rare dragonfish.'},
-  {id:'megalodon_biggame_rig', fishId:'megalodon', name:'Megalodon big-game rig', icon:'🦈', cost:22000, level:85, type:'biggame', desc:'Massive cable, reel, and terminal tackle for prehistoric predators.'},
-  {id:'leviathan_deepsea_rig', fishId:'leviathan', name:'Leviathan deep-sea rig', icon:'🌊', cost:30000, level:90, type:'biggame', desc:'The ultimate fictional deep-water rig for the Leviathan.'}
+  {id:'lobster_trap', fishId:'lobster', name:'Lobster trap', icon:'🦞', cost:2600, level:40, type:'trap', desc:'A commercial-style trap built for valuable lobster.'},
+  {id:'bass_spinning_rod', fishId:'bass', name:'Bass spinning rod', icon:'🎣', cost:4600, level:45, type:'rod', desc:'Medium-heavy spinning tackle for hard-fighting bass.'},
+  {id:'sturgeon_heavy_rig', fishId:'sturgeon', name:'Sturgeon heavy rig', icon:'⚓', cost:8000, level:50, type:'rig', desc:'A powerful bottom rig for large, ancient fish.'},
+  {id:'koi_carp_rod', fishId:'koi', name:'Koi match rod', icon:'🎣', cost:14000, level:55, type:'rod', desc:'Long, controlled tackle for valuable koi.'},
+  {id:'squid_jigging_rig', fishId:'squid', name:'Deep squid jigging rig', icon:'🦑', cost:24000, level:60, type:'deep', desc:'Specialized lights and jigs for deep squid.'},
+  {id:'octopus_pot', fishId:'octopus', name:'Octopus pot', icon:'🪤', cost:42500, level:65, type:'trap', desc:'A reinforced pot designed for strong, clever cephalopods.'},
+  {id:'eel_trap', fishId:'eel', name:'Deep eel trap', icon:'🪤', cost:76000, level:70, type:'trap', desc:'Heavy trap gear for deep, slippery eels.'},
+  {id:'marlin_trolling_rig', fishId:'marlin', name:'Marlin trolling rig', icon:'⚓', cost:135000, level:75, type:'biggame', desc:'Heavy offshore trolling gear for powerful billfish.'},
+  {id:'dragonfish_deep_rig', fishId:'dragonfish', name:'Dragonfish deep rig', icon:'🐉', cost:245000, level:80, type:'deep', desc:'Extreme deep-water tackle for rare dragonfish.'},
+  {id:'megalodon_biggame_rig', fishId:'megalodon', name:'Megalodon big-game rig', icon:'🦈', cost:450000, level:85, type:'biggame', desc:'Massive cable, reel, and terminal tackle for prehistoric predators.'},
+  {id:'leviathan_deepsea_rig', fishId:'leviathan', name:'Leviathan deep-sea rig', icon:'🌊', cost:830000, level:90, type:'biggame', desc:'The ultimate fictional deep-water rig for the Leviathan.'}
 ];
 
 export function equipmentById(id){
@@ -208,7 +208,7 @@ export var COLLECTION_LOG_ITEMS = [
 var MYTHIC_LOG_ITEMS = [];
 FISH.forEach(function(fish){
   for(var mythicNumber=1;mythicNumber<=5;mythicNumber++){
-    MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.0002, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
+    MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.001, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
   }
 });
 COLLECTION_LOG_ITEMS = COLLECTION_LOG_ITEMS.concat(MYTHIC_LOG_ITEMS);

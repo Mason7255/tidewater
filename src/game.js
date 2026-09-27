@@ -73,7 +73,12 @@ export function storageUpgradeLevel(){ return Math.min(Math.max(0,Number(state.s
 export function storageCapacity(){ return 25 + storageUpgradeLevel()*5; }
 export function storageNameForTier(tier){ return STORAGE_NAMES[Math.min(Math.max(0,tier||0),STORAGE_NAMES.length-1)]; }
 export function storageName(){ return storageNameForTier(storageUpgradeLevel()); }
-export function storageCostForTier(tier){ return 100 * Math.pow(tier+1,2); }
+// Tiers 0-12 are the original 100*(tier+1)^2 curve, left untouched because
+// they already track income well. Tiers 13-19 unlock so late (Lv 66-96) that
+// the quadratic formula would leave them under 1% of a player's coin stack;
+// these are hand-set to keep pace with how fast late-game income compounds.
+var STORAGE_COSTS = [100,400,900,1600,2500,3600,4900,6400,8100,10000,12100,14400,16900,30000,53000,93000,165000,290000,505000,860000];
+export function storageCostForTier(tier){ return STORAGE_COSTS[Math.min(Math.max(0,tier),STORAGE_COSTS.length-1)]; }
 export function storageUpgradeCost(){ return storageCostForTier(storageUpgradeLevel()); }
 export function keptFishCount(){ return state.inventory.filter(function(entry){ return entry.status === 'kept'; }).length; }
 export function currentEquipment(){
@@ -94,7 +99,14 @@ export function updateHud(){
   var baitCount = currentBaitCount();
   document.getElementById('fishCount').textContent = totalFishCaught();
   document.getElementById('coinCount').textContent = state.coins;
-  // The bait-corner display was removed; bait inventory and consumption remain active.
+
+  var baitCountEl = document.getElementById('baitCornerCount');
+  var baitPillEl = document.getElementById('sceneBaitCount');
+  if(baitCountEl) baitCountEl.textContent = baitCount;
+  if(baitPillEl){
+    baitPillEl.classList.toggle('low', baitCount <= 0);
+    baitPillEl.title = bait ? bait.name+' — '+baitCount+' remaining' : '';
+  }
 
   var storageCountEl = document.getElementById('sceneStorageCount');
   if(storageCountEl) storageCountEl.textContent = keptFishCount()+' / '+storageCapacity();
@@ -438,17 +450,16 @@ export function grantFish(fish, forcedQuality){
       showToast((isNewLogItem ? 'New collection log item! ' : 'Found another ') + logItem.icon + ' ' + logItem.name + '.');
     }, isNewLogItem ? 1400 : 1100);
   }
- var mythicPool = mythicLogItemsForFish(fish.id);
-if(mythicPool.length && Math.random() < 0.001){
-  var mythicItem = mythicPool[Math.floor(Math.random() * mythicPool.length)];
-  var isNewMythic = !state.collectionLog[mythicItem.id];
-  state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
-  setTimeout(function(){
-    playCollectionSound();
-    showMegaRareFeedback(mythicItem, fish);
-    showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
-  }, isNewMythic ? 1400 : 1100);
-}
+  mythicLogItemsForFish(fish.id).forEach(function(mythicItem){
+    if(Math.random() >= mythicItem.chance) return;
+    var isNewMythic = !state.collectionLog[mythicItem.id];
+    state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
+    setTimeout(function(){
+      playCollectionSound();
+      showMegaRareFeedback(mythicItem, fish);
+      showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
+    }, isNewMythic ? 1400 : 1100);
+  });
 
   saveState();
   updateHud(); updateGearCaption(); renderInventoryStrip(); renderBaitChips(); renderCatchFeed();
