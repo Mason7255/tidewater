@@ -6,8 +6,8 @@
 
 
 import { playBuySound, playEquipSound } from './audio.js';
-import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, backgroundById, baitById, baitForFish, clothingItemsForSlot, equipmentById, isBackgroundUnlocked } from './data.js';
-import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, trophyEntry, unequipClothingSlot, updateGearCaption, updateHud } from './game.js';
+import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItemsForSlot, equipmentById, isBackgroundUnlocked, trinketItems } from './data.js';
+import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipTrinket, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showCoinGain, showScreen, showToast } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
@@ -377,22 +377,30 @@ if(buyMoreBaitBtnEl) buyMoreBaitBtnEl.addEventListener('click', quickBuySelected
 document.getElementById('backFromShop').addEventListener('click', function(){ showScreen('screen-dock'); });
 export var activeEquipmentTab = 'gear';
 export function setEquipmentTab(tab){
-  activeEquipmentTab = tab === 'clothing' ? 'clothing' : 'gear';
+  activeEquipmentTab = (tab === 'clothing' || tab === 'trinkets') ? tab : 'gear';
   document.getElementById('equipTabGear').classList.toggle('active', activeEquipmentTab==='gear');
   document.getElementById('equipTabGear').setAttribute('aria-selected', activeEquipmentTab==='gear' ? 'true' : 'false');
   document.getElementById('equipTabClothing').classList.toggle('active', activeEquipmentTab==='clothing');
   document.getElementById('equipTabClothing').setAttribute('aria-selected', activeEquipmentTab==='clothing' ? 'true' : 'false');
+  document.getElementById('equipTabTrinkets').classList.toggle('active', activeEquipmentTab==='trinkets');
+  document.getElementById('equipTabTrinkets').setAttribute('aria-selected', activeEquipmentTab==='trinkets' ? 'true' : 'false');
   document.getElementById('ownedEquipmentList').style.display = activeEquipmentTab==='gear' ? '' : 'none';
   document.getElementById('clothingList').style.display = activeEquipmentTab==='clothing' ? '' : 'none';
+  document.getElementById('trinketsList').style.display = activeEquipmentTab==='trinkets' ? '' : 'none';
   document.getElementById('equipmentIntroText').textContent = activeEquipmentTab==='gear'
     ? 'Only gear you own is shown here. Equip a setup to target its species.'
-    : 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed — a full 5-piece set from one species is a 20% boost.';
-  if(activeEquipmentTab==='clothing') renderClothing(); else renderOwnedEquipment();
+    : activeEquipmentTab==='clothing'
+    ? 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed — a full 5-piece set from one species is a 20% boost.'
+    : 'Rare curiosities found alongside a catch (1 in 5,000). Equip up to '+TRINKET_SLOTS+' at once — most are just keepsakes for now, but a few carry real bonuses.';
+  if(activeEquipmentTab==='clothing') renderClothing();
+  else if(activeEquipmentTab==='trinkets') renderTrinkets();
+  else renderOwnedEquipment();
 }
 document.getElementById('viewEquipmentBtn').addEventListener('click', function(){ setEquipmentTab(activeEquipmentTab); showScreen('screen-equipment'); });
 document.getElementById('backFromEquipment').addEventListener('click', function(){ showScreen('screen-dock'); });
 document.getElementById('equipTabGear').addEventListener('click', function(){ setEquipmentTab('gear'); });
 document.getElementById('equipTabClothing').addEventListener('click', function(){ setEquipmentTab('clothing'); });
+document.getElementById('equipTabTrinkets').addEventListener('click', function(){ setEquipmentTab('trinkets'); });
 document.getElementById('shopTabBait').addEventListener('click', function(){ setShopTab('bait'); });
 document.getElementById('shopTabEquipment').addEventListener('click', function(){ setShopTab('equipment'); });
 document.getElementById('shopTabStorage').addEventListener('click', function(){ setShopTab('storage'); });
@@ -581,6 +589,52 @@ export function renderClothing(){
     btn.addEventListener('click', function(){
       unequipClothingSlot(btn.getAttribute('data-unequip-clothing'));
       playEquipSound(); showToast('Unequipped.'); renderClothing();
+    });
+  });
+}
+
+export function renderTrinkets(){
+  var list=document.getElementById('trinketsList'); list.innerHTML='';
+  var equippedCount = 0;
+  var summary=document.createElement('div'); summary.className='clothing-summary';
+  var speedPct = Math.round(totalTrinketSpeedBonus()*100);
+  var noBaitPct = Math.round(trinketNoBaitChance()*100);
+  trinketItems().forEach(function(item){ if(isTrinketEquipped(item.id)) equippedCount++; });
+  var bonusBits = [];
+  if(speedPct > 0) bonusBits.push('+'+speedPct+'% fishing speed');
+  if(noBaitPct > 0) bonusBits.push(noBaitPct+'% chance to use no bait');
+  summary.textContent = equippedCount+' / '+TRINKET_SLOTS+' trinket slots used'+(bonusBits.length ? ' — '+bonusBits.join(', ') : '');
+  list.appendChild(summary);
+  trinketItems().forEach(function(item){
+    var owned = isTrinketOwned(item.id);
+    var equipped = isTrinketEquipped(item.id);
+    var fish = fishById(item.fishId);
+    var bonusText = item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.') : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.') : 'No bonus yet.');
+    var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
+    card.innerHTML =
+      '<div class="shop-icon">'+(owned?item.icon:'❔')+'</div>'+
+      '<div class="shop-body">'+
+        '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
+        '<div class="shop-desc">'+(owned
+          ? (bonusText+' '+item.flavor)
+          : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.'))+'</div>'+
+      '</div>'+
+      (owned ? (equipped
+        ? '<button class="shop-buy" data-unequip-trinket="'+item.id+'">Unequip</button>'
+        : '<button class="shop-buy" data-equip-trinket="'+item.id+'">Equip</button>') : '');
+    list.appendChild(card);
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-equip-trinket]'), function(btn){
+    btn.addEventListener('click', function(){
+      var id = btn.getAttribute('data-equip-trinket');
+      if(equipTrinket(id)){ playEquipSound(); showToast('Equipped.'); renderTrinkets(); }
+      else showToast('All '+TRINKET_SLOTS+' trinket slots are full — unequip one first.');
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-unequip-trinket]'), function(btn){
+    btn.addEventListener('click', function(){
+      unequipTrinket(btn.getAttribute('data-unequip-trinket'));
+      playEquipSound(); showToast('Unequipped.'); renderTrinkets();
     });
   });
 }

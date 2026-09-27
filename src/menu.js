@@ -44,6 +44,7 @@ export function makeFreshState(){
     records:{ bestFloat:1, bestStars:0, bestFishId:null, bestCatchId:null, perSpeciesFloat:{}, perSpeciesStars:{}, perSpeciesCatchId:{} }, recentCatches:[], catchHistory:[],
     collectionLog:{}, claimedChallenges:{}, challengeTiers:{},
     equippedClothing:{hat:null, shirt:null, pants:null, shoes:null, gloves:null},
+    equippedTrinkets:[],
     selectedBackground:'default',
     soundEnabled:true, volume:40
   };

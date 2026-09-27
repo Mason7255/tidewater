@@ -13,7 +13,7 @@
 
 
 import { playCatchSound, playCollectionSound, playLevelSound, playMegaRareSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, backgroundById, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
+import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -442,8 +442,61 @@ export function totalClothingSpeedBonus(){
 
 export function castDurationMs(fish){
   var base = currentBaitCount() > 0 ? BASE_CAST_MS : NO_BAIT_CAST_MS;
-  var clothingMultiplier = 1 - totalClothingSpeedBonus();
-  return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp') * clothingMultiplier);
+  var totalSpeedBonus = Math.min(totalClothingSpeedBonus() + totalTrinketSpeedBonus(), 0.9);
+  var speedMultiplier = 1 - totalSpeedBonus;
+  return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp') * speedMultiplier);
+}
+
+// ---------- Trinkets ----------
+// state.equippedTrinkets is a flat array of item ids (unlike clothing,
+// trinkets aren't tied to a body slot — any owned trinket can go in any of
+// the TRINKET_SLOTS). Only lobster_claw (speedBonus) and bass_lure
+// (noBaitChance) carry a real effect right now; the rest equip for free
+// with no bonus, ready for effects to be added later.
+export function equippedTrinketIds(){
+  return (state.equippedTrinkets || []).slice();
+}
+export function isTrinketOwned(itemId){
+  return !!(state.collectionLog && state.collectionLog[itemId]);
+}
+export function isTrinketEquipped(itemId){
+  return !!(state.equippedTrinkets && state.equippedTrinkets.indexOf(itemId) >= 0);
+}
+export function equipTrinket(itemId){
+  var item = trinketById(itemId);
+  if(!item || !isTrinketOwned(itemId)) return false;
+  if(!state.equippedTrinkets) state.equippedTrinkets = [];
+  if(state.equippedTrinkets.indexOf(itemId) >= 0) return true;
+  if(state.equippedTrinkets.length >= TRINKET_SLOTS) return false;
+  state.equippedTrinkets.push(itemId);
+  saveState();
+  return true;
+}
+export function unequipTrinket(itemId){
+  if(!state.equippedTrinkets) state.equippedTrinkets = [];
+  var idx = state.equippedTrinkets.indexOf(itemId);
+  if(idx >= 0) state.equippedTrinkets.splice(idx, 1);
+  saveState();
+}
+export function totalTrinketSpeedBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.speedBonus || 0;
+  });
+  return Math.min(total, 0.9);
+}
+export function trinketNoBaitChance(){
+  if(!state.equippedTrinkets) return 0;
+  var chance = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item && item.noBaitChance) chance = Math.max(chance, item.noBaitChance);
+  });
+  return Math.min(chance, 0.95);
 }
 
 // ---------- Dock scene background ----------
@@ -954,7 +1007,8 @@ export function beginSingleCast(sessionId){
   castActive = true;
 
   if(currentBaitCount() > 0){
-    state.baitCounts[currentBaitId()] -= 1;
+    var savedByTrinket = trinketNoBaitChance() > 0 && Math.random() < trinketNoBaitChance();
+    if(!savedByTrinket) state.baitCounts[currentBaitId()] -= 1;
     saveState();
   }
   updateHud();

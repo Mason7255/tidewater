@@ -184,27 +184,37 @@ export function makeBaitCounts(){
 
 // Rare curiosities: a small, per-species chance to also pull up a junk/log
 // item alongside the fish itself — tracked separately in the Collection Log.
+// Every curiosity below also doubles as an equippable "trinket" (see
+// TRINKET_SLOTS / trinketItems() below) — trinket:true marks it as
+// eligible to equip. Most have no bonus yet (speedBonus/noBaitChance
+// omitted); the two starter trinkets with real effects are lobster_claw
+// (+25% fishing speed) and bass_lure (50% chance a cast uses no bait).
 export var COLLECTION_LOG_ITEMS = [
-  {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad."},
-  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.'},
-  {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago."},
-  {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.'},
-  {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.'},
-  {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom."},
-  {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open.'},
-  {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud.'},
-  {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat.'},
-  {id:'bass_lure', fishId:'bass', name:'Vintage Bass Lure', icon:'🪝', chance:0.0002, flavor:'Paint chipped, hooks dulled, story unknown.'},
-  {id:'sturgeon_tag', fishId:'sturgeon', name:'Old Sturgeon Tag', icon:'🏷️', chance:0.0002, flavor:'A faded research tag from years ago.'},
-  {id:'koi_coin', fishId:'koi', name:'Koi Collector Coin', icon:'🪙', chance:0.0002, flavor:'A polished token stamped with a koi.'},
-  {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.'},
-  {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.'},
-  {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.'},
-  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.'},
-  {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.'},
-  {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.'},
-  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it."}
+  {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad.", trinket:true},
+  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true},
+  {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true},
+  {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true},
+  {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true},
+  {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom.", trinket:true},
+  {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open.', trinket:true},
+  {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud.', trinket:true},
+  {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat.', trinket:true, speedBonus:0.25},
+  {id:'bass_lure', fishId:'bass', name:'Vintage Bass Lure', icon:'🪝', chance:0.0002, flavor:'Paint chipped, hooks dulled, story unknown.', trinket:true, noBaitChance:0.5},
+  {id:'sturgeon_tag', fishId:'sturgeon', name:'Old Sturgeon Tag', icon:'🏷️', chance:0.0002, flavor:'A faded research tag from years ago.', trinket:true},
+  {id:'koi_coin', fishId:'koi', name:'Koi Collector Coin', icon:'🪙', chance:0.0002, flavor:'A polished token stamped with a koi.', trinket:true},
+  {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.', trinket:true},
+  {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.', trinket:true},
+  {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.', trinket:true},
+  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true},
+  {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
+  {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
+  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true}
 ];
+// Trinkets aren't tied to a body slot like clothing — any owned trinket can
+// fill any of the equipped slots, up to TRINKET_SLOTS at once.
+export var TRINKET_SLOTS = 3;
+export function trinketItems(){ return COLLECTION_LOG_ITEMS.filter(function(item){ return !!item.trinket; }); }
+export function trinketById(id){ return trinketItems().filter(function(item){ return item.id===id; })[0] || null; }
 var MYTHIC_LOG_ITEMS = [];
 export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 // Fish ids in this list get 5 named, wearable mythic pieces (one per slot in
