@@ -6,8 +6,8 @@
 
 
 import { playBuySound, playEquipSound } from './audio.js';
-import { BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, baitById, baitForFish, clothingItemsForSlot, equipmentById } from './data.js';
-import { closeCatchInspect, currentBaitId, equipClothing, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, trophyEntry, unequipClothingSlot, updateGearCaption, updateHud } from './game.js';
+import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, backgroundById, baitById, baitForFish, clothingItemsForSlot, equipmentById, isBackgroundUnlocked } from './data.js';
+import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, keptFishCount, playerLevel, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, trophyEntry, unequipClothingSlot, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showCoinGain, showScreen, showToast } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
@@ -386,7 +386,7 @@ export function setEquipmentTab(tab){
   document.getElementById('clothingList').style.display = activeEquipmentTab==='clothing' ? '' : 'none';
   document.getElementById('equipmentIntroText').textContent = activeEquipmentTab==='gear'
     ? 'Only gear you own is shown here. Equip a setup to target its species.'
-    : 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed \u2014 a full 5-piece set from one species is a 20% boost.';
+    : 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed — a full 5-piece set from one species is a 20% boost.';
   if(activeEquipmentTab==='clothing') renderClothing(); else renderOwnedEquipment();
 }
 document.getElementById('viewEquipmentBtn').addEventListener('click', function(){ setEquipmentTab(activeEquipmentTab); showScreen('screen-equipment'); });
@@ -558,12 +558,12 @@ export function renderClothing(){
       var fish = fishById(item.fishId);
       var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
       card.innerHTML =
-        '<div class="shop-icon">'+(owned?item.icon:'\u2754')+'</div>'+
+        '<div class="shop-icon">'+(owned?item.icon:'❔')+'</div>'+
         '<div class="shop-body">'+
           '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
           '<div class="shop-desc">'+(owned
             ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed. '+item.flavor)
-            : ('Not discovered yet \u2014 this is a rare mythic catch from '+(fish?fish.name:'this species')+'.'))+'</div>'+
+            : ('Not discovered yet — this is a rare mythic catch from '+(fish?fish.name:'this species')+'.'))+'</div>'+
         '</div>'+
         (owned ? (equipped
           ? '<button class="shop-buy" data-unequip-clothing="'+slot+'">Unequip</button>'
@@ -581,6 +581,39 @@ export function renderClothing(){
     btn.addEventListener('click', function(){
       unequipClothingSlot(btn.getAttribute('data-unequip-clothing'));
       playEquipSound(); showToast('Unequipped.'); renderClothing();
+    });
+  });
+}
+
+// ---------- Backgrounds ----------
+document.getElementById('viewBackgroundsBtn').addEventListener('click', function(){ renderBackgrounds(); showScreen('screen-backgrounds'); });
+document.getElementById('backFromBackgrounds').addEventListener('click', function(){ showScreen('screen-dock'); });
+
+export function renderBackgrounds(){
+  var grid=document.getElementById('backgroundsGrid'); grid.innerHTML='';
+  BACKGROUNDS.forEach(function(bg){
+    var unlocked = isBackgroundUnlocked(bg);
+    var selected = (state.selectedBackground || 'default') === bg.id;
+    var card=document.createElement('div'); card.className='background-card'+(selected?' selected-item':'')+(!unlocked?' locked':'');
+    var unlockText = '';
+    if(!unlocked && bg.unlock && bg.unlock.type === 'catch'){
+      var fish = fishById(bg.unlock.fishId);
+      var progress = state.caught[bg.unlock.fishId] || 0;
+      unlockText = 'Catch '+bg.unlock.amount+' '+(fish?fish.name.toLowerCase():bg.unlock.fishId)+' to unlock. ('+progress+' / '+bg.unlock.amount+')';
+    }
+    var previewHtml = bg.svg ? bg.svg : '<div class="background-preview-default"></div>';
+    card.innerHTML =
+      '<div class="background-preview">'+previewHtml+'</div>'+
+      '<div class="background-body">'+
+        '<div class="shop-title">'+bg.name+'</div>'+
+        (unlocked ? '' : '<div class="shop-desc">'+unlockText+'</div>')+
+      '</div>'+
+      (unlocked ? (selected ? '<div class="shop-owned">Selected</div>' : '<button class="shop-buy" data-select-bg="'+bg.id+'">Select</button>') : '<div class="shop-owned">Locked</div>');
+    grid.appendChild(card);
+  });
+  Array.prototype.forEach.call(grid.querySelectorAll('[data-select-bg]'), function(btn){
+    btn.addEventListener('click', function(){
+      if(selectBackground(btn.getAttribute('data-select-bg'))){ showToast('Background changed.'); renderBackgrounds(); }
     });
   });
 }

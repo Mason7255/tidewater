@@ -123,8 +123,10 @@
       <button class="rail-btn" id="viewLogBtn" type="button">Log</button>
       <button class="rail-btn" id="viewSkillsBtn" type="button">Skills</button>
       <button class="rail-btn" id="viewChallengesBtn" type="button">Challenges</button>
+      <button class="rail-btn rail-btn-bottom" id="viewBackgroundsBtn" type="button">Backgrounds</button>
     </nav>
     <div class="scene" id="dockScene">
+      <div class="scene-bg-custom" id="sceneBgCustom"></div>
       <div class="sky-glow"></div>
       <div class="water-lines"></div>
       <div class="scene-badges" id="sceneBadges">
@@ -272,6 +274,14 @@
     </div>
     <div class="equipment-list" id="ownedEquipmentList"></div>
     <div class="clothing-list" id="clothingList" style="display:none;"></div>
+  </section>
+
+  <!-- BACKGROUNDS -->
+  <section class="screen panel" id="screen-backgrounds">
+    <button class="nav-back" id="backFromBackgrounds">✕ Close</button>
+    <h2>Backgrounds</h2>
+    <p class="intro-text" style="margin-bottom:0;">Change the look of your dock scene. New ones unlock as you catch more fish.</p>
+    <div class="backgrounds-grid" id="backgroundsGrid"></div>
   </section>
 
 </div>

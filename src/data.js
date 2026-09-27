@@ -241,7 +241,6 @@ export function mythicLogItemsForFish(fishId){ return MYTHIC_LOG_ITEMS.filter(fu
 export function clothingItems(){ return MYTHIC_LOG_ITEMS.filter(function(item){ return !!item.clothing; }); }
 export function clothingItemsForSlot(slot){ return clothingItems().filter(function(item){ return item.slot===slot; }); }
 
-
 // Challenges are tiered. Claiming one removes it and immediately advances that
 // challenge family to its next target. When the final tier is claimed, that
 // challenge family disappears permanently.
@@ -262,3 +261,25 @@ export var BASE_CAST_MS = 5000;
 export var NO_BAIT_CAST_MS = 12000;
 export var RATING_EXPONENT = 4;
 
+// ---------- Dock scene backgrounds ----------
+// Each entry (besides 'default', which just falls back to the existing
+// CSS-drawn scene) carries a small self-contained pixel-art SVG that gets
+// injected directly into #dockScene — see applyBackground() in game.js. To
+// add another one: drop a new object in here with a fresh unlock condition.
+// unlock.type 'catch' checks state.caught[fishId] >= amount; add a 'level'
+// type the same way later if you want level-gated backgrounds too.
+export var BACKGROUNDS = [
+  {id:'default', name:'Classic Ocean', unlock:null, svg:null},
+  {
+    id:'shrimp_dusk',
+    name:'Shrimp Cove Dusk',
+    unlock:{type:'catch', fishId:'shrimp', amount:100},
+    svg:'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 40" preserveAspectRatio="xMidYMid slice" shape-rendering="crispEdges"><rect width="64" height="40" fill="#000"/><rect x="0" y="0" width="64" height="20" fill="#2b2f6b"/><rect x="0" y="0" width="64" height="10" fill="#ffb98a"/><rect x="0" y="6" width="64" height="6" fill="#ff8f6b"/><circle cx="50" cy="10" r="4" fill="#fff1c1"/><polygon points="0,40 0,20 8,21 14,21 21,18 28,18 33,21 40,21 47,18 55,21 62,19 64,21 64,40" fill="#3a2f52"/><rect x="0" y="20.0" width="64" height="4.3" fill="#2c5f78"/><rect x="0" y="24.0" width="64" height="4.3" fill="#255271"/><rect x="0" y="28.0" width="64" height="4.3" fill="#1f4761"/><rect x="0" y="32.0" width="64" height="4.3" fill="#193d52"/><rect x="0" y="36.0" width="64" height="4.3" fill="#132f40"/></svg>'
+  }
+];
+export function backgroundById(id){ for(var i=0;i<BACKGROUNDS.length;i++){ if(BACKGROUNDS[i].id===id) return BACKGROUNDS[i]; } return BACKGROUNDS[0]; }
+export function isBackgroundUnlocked(bg){
+  if(!bg || !bg.unlock) return true;
+  if(bg.unlock.type === 'catch') return (state.caught[bg.unlock.fishId] || 0) >= bg.unlock.amount;
+  return false;
+}

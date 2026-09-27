@@ -7,7 +7,7 @@
 
 import { audioMaster, ensureAudio, playClickSound, soundCheck, startWaterAmbience, stopWaterAmbience } from './audio.js';
 import { OUTFIT_COLORS, makeBaitCounts, startingOwnedEquipment } from './data.js';
-import { animationsEnabled, closeCatchInspect, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
+import { animationsEnabled, applyBackground, closeCatchInspect, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showScreen, showToast } from './render.js';
 import { SLOT_COUNT, activeSlot, deleteSlotData, escapeHtml, formatSavedAt, getSlotInfo, loadSlot, saveState, saveToSlot, setActiveSlot, setCatchIdCounter, setState, state } from './state.js';
 
@@ -44,6 +44,7 @@ export function makeFreshState(){
     records:{ bestFloat:1, bestStars:0, bestFishId:null, bestCatchId:null, perSpeciesFloat:{}, perSpeciesStars:{}, perSpeciesCatchId:{} }, recentCatches:[], catchHistory:[],
     collectionLog:{}, claimedChallenges:{}, challengeTiers:{},
     equippedClothing:{hat:null, shirt:null, pants:null, shoes:null, gloves:null},
+    selectedBackground:'default',
     soundEnabled:true, volume:40
   };
 }
@@ -69,7 +70,7 @@ export function enterDock(){
   document.getElementById('topbar').style.display = 'flex';
   document.getElementById('xpBarWrap').style.display = 'block';
   renderPlayer(document.getElementById('dockPlayerWrap'), true);
-  updateHud(); updateGearCaption(); renderInventoryStrip(); updateSaveIndicator();
+  updateHud(); updateGearCaption(); renderInventoryStrip(); updateSaveIndicator(); applyBackground();
   showScreen('screen-dock');
   startAutoFish();
 }

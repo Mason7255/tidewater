@@ -13,7 +13,7 @@
 
 
 import { playCatchSound, playCollectionSound, playLevelSound, playMegaRareSound, playSellSound, playTrophySound, startWaterAmbience } from './audio.js';
-import { BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
+import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, backgroundById, baitById, baitForFish, clothingItems, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -444,6 +444,34 @@ export function castDurationMs(fish){
   var base = currentBaitCount() > 0 ? BASE_CAST_MS : NO_BAIT_CAST_MS;
   var clothingMultiplier = 1 - totalClothingSpeedBonus();
   return Math.round(base * proficiencySpeedMultiplier(fish ? fish.id : 'shrimp') * clothingMultiplier);
+}
+
+// ---------- Dock scene background ----------
+// Paints whichever background is currently selected into #dockScene. Called
+// on entering the dock and whenever the player picks a new background.
+// 'default' (or an unrecognized/locked id) leaves the existing CSS-drawn
+// scene alone; anything else injects that background's SVG markup and hides
+// the default sky/water layers so the two don't overlap.
+export function applyBackground(){
+  var sceneEl = document.getElementById('dockScene');
+  var layerEl = document.getElementById('sceneBgCustom');
+  if(!sceneEl || !layerEl) return;
+  var bg = backgroundById(state.selectedBackground || 'default');
+  if(!bg || bg.id === 'default' || !bg.svg || !isBackgroundUnlocked(bg)){
+    sceneEl.setAttribute('data-bg', 'default');
+    layerEl.innerHTML = '';
+    return;
+  }
+  sceneEl.setAttribute('data-bg', bg.id);
+  layerEl.innerHTML = bg.svg;
+}
+export function selectBackground(id){
+  var bg = backgroundById(id);
+  if(!bg || !isBackgroundUnlocked(bg)) return false;
+  state.selectedBackground = bg.id;
+  saveState();
+  applyBackground();
+  return true;
 }
 
 export function grantFish(fish, forcedQuality){
