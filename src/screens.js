@@ -280,7 +280,8 @@ export function renderLog(){
     // wrong for mythics (chance 0.001 = 1/1000). Compute it from the item's
     // real chance instead so it's correct for both.
     var oddsText = '1/'+Math.round(1/item.chance).toLocaleString()+' drop';
-    var subtext = owned ? '×'+owned+' · '+oddsText : ('From ' + (fish ? fish.name : '?')+' · '+oddsText);
+    var sourceText = item.universal ? 'From any catch' : ('From ' + (fish ? fish.name : '?'));
+    var subtext = owned ? '×'+owned+' · '+oddsText : (sourceText+' · '+oddsText);
     tile.innerHTML =
       '<div class="dot" style="background:rgba(217,164,65,0.16); color:var(--gold);">'+(owned ? item.icon : '?')+'</div>' +
       '<div class="fname">'+(owned ? item.name : '???')+'</div>' +
@@ -622,17 +623,28 @@ export function renderTrinkets(){
   var summary=document.createElement('div'); summary.className='clothing-summary';
   var speedPct = Math.round(totalTrinketSpeedBonus()*100);
   var noBaitPct = Math.round(trinketNoBaitChance()*100);
-  trinketItems().forEach(function(item){ if(isTrinketEquipped(item.id)) equippedCount++; });
+  var forceLegendaryOn = false;
+  trinketItems().forEach(function(item){
+    if(!isTrinketEquipped(item.id)) return;
+    equippedCount++;
+    if(item.forceLegendary) forceLegendaryOn = true;
+  });
   var bonusBits = [];
   if(speedPct > 0) bonusBits.push('+'+speedPct+'% fishing speed');
   if(noBaitPct > 0) bonusBits.push(noBaitPct+'% chance to use no bait');
+  if(forceLegendaryOn) bonusBits.push('every catch guaranteed 5★');
   summary.textContent = equippedCount+' / '+TRINKET_SLOTS+' trinket slots used'+(bonusBits.length ? ' — '+bonusBits.join(', ') : '');
   list.appendChild(summary);
   trinketItems().forEach(function(item){
     var owned = isTrinketOwned(item.id);
     var equipped = isTrinketEquipped(item.id);
     var fish = fishById(item.fishId);
-    var bonusText = item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.') : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.') : 'No bonus yet.');
+    var bonusText = item.forceLegendary
+      ? 'Every catch is a guaranteed 5★ (Legendary) catch while equipped.'
+      : (item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.') : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.') : 'No bonus yet.'));
+    var discoveryText = item.universal
+      ? 'Not discovered yet — an almost impossible 1-in-10,000,000 find from any catch, of any species.'
+      : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.');
     var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
     card.innerHTML =
       '<div class="shop-icon">'+(owned?item.icon:'❔')+'</div>'+
@@ -640,7 +652,7 @@ export function renderTrinkets(){
         '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
         '<div class="shop-desc">'+(owned
           ? (bonusText+' '+item.flavor)
-          : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.'))+'</div>'+
+          : discoveryText)+'</div>'+
       '</div>'+
       (owned ? (equipped
         ? '<button class="shop-buy" data-unequip-trinket="'+item.id+'">Unequip</button>'

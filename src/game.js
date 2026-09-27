@@ -12,8 +12,8 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, xpTable } from './data.js';
+import { playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
+import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -103,6 +103,29 @@ export function currentBaitId(){
 export function currentBaitCount(){ var id = currentBaitId(); return id ? (state.baitCounts[id] || 0) : 0; }
 export function hasBait(){ return currentBaitCount() > 0; }
 
+// Quick-Buy Bait upgrade (see UPGRADES in data.js): tapping the bait counter
+// in the dock scene buys one pack (5 bait) of whatever bait matches the
+// currently equipped gear, at the same packCost as the Bait shop tab.
+export function quickBuyBait(){
+  if(!state.upgrades.quick_buy_bait){
+    showToast('Buy the Quick-Buy Bait upgrade first.');
+    return false;
+  }
+  var bait = baitById(currentBaitId());
+  if(!bait) return false;
+  if(state.coins < bait.packCost){
+    showToast('Not enough coins for '+bait.name.toLowerCase()+'.');
+    return false;
+  }
+  state.coins -= bait.packCost;
+  state.baitCounts[bait.id] = (state.baitCounts[bait.id] || 0) + bait.packAmount;
+  saveState();
+  updateHud();
+  playBuySound();
+  showToast('Bought '+bait.packAmount+' '+bait.name.toLowerCase()+'.');
+  return true;
+}
+
 export function updateHud(){
   var lvl = playerLevel();
   var bait = baitById(currentBaitId());
@@ -115,7 +138,13 @@ export function updateHud(){
   if(baitCountEl) baitCountEl.textContent = baitCount;
   if(baitPillEl){
     baitPillEl.classList.toggle('low', baitCount <= 0);
-    baitPillEl.title = bait ? bait.name+' — '+baitCount+' remaining' : '';
+    var canQuickBuy = !!state.upgrades.quick_buy_bait;
+    baitPillEl.classList.toggle('buyable', canQuickBuy);
+    baitPillEl.title = bait
+      ? (canQuickBuy
+          ? 'Tap to buy 5 '+bait.name.toLowerCase()+' for '+bait.packCost+' ⛃'
+          : bait.name+' — '+baitCount+' remaining')
+      : '';
   }
 
   var storageCountEl = document.getElementById('sceneStorageCount');
@@ -642,6 +671,17 @@ export function grantFish(fish, forcedQuality){
       showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
     }, isNewMythic ? 1400 : 1100);
   });
+  // Universal drops (currently just the Dev Luck Tablet, 1-in-10,000,000):
+  // not tied to fish.id, so every catch of every species gets a roll.
+  universalLogItems().forEach(function(uItem){
+    if(Math.random() >= uItem.chance) return;
+    var isNewUniversal = !state.collectionLog[uItem.id];
+    state.collectionLog[uItem.id] = (state.collectionLog[uItem.id]||0) + 1;
+    setTimeout(function(){
+      showMegaRareFeedback(uItem, fish, isNewUniversal);
+      showToast((isNewUniversal ? 'Impossible find! ' : 'Found another ') + uItem.icon + ' ' + uItem.name + '.');
+    }, isNewUniversal ? 1400 : 1100);
+  });
 
   // Auto-Sell (Upgrades tab): silently sells this catch right back off if
   // it's at or below the threshold the player picked. Capped at 3 stars in
@@ -735,6 +775,8 @@ export function removeRecentCatch(catchId){
 }
 
 document.getElementById('sellRecentBtn').addEventListener('click', sellAllKept);
+var baitCounterEl = document.getElementById('sceneBaitCount');
+if(baitCounterEl) baitCounterEl.addEventListener('click', quickBuyBait);
 
 export function closeCatchInspect(){
   var modal = document.getElementById('catchInspect');

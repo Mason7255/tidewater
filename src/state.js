@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
+import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -208,7 +208,23 @@ export function buffRemainingMs(id){
   if(!isBuffActive(id)) return 0;
   return Math.max(0, state.activeBuffs[id] - Date.now());
 }
+// True if an equipped trinket forces every catch to 5-star/Legendary (right
+// now just the ultra-rare Dev Luck Tablet -- see data.js). Checked before
+// anything else in rollQuality() so it short-circuits the normal roll
+// entirely, same as the Six-Pack buff nudges it rather than replacing it.
+function hasForceLegendaryTrinket(){
+  var ids = state.equippedTrinkets;
+  if(!ids || !ids.length) return false;
+  for(var i=0;i<ids.length;i++){
+    var item = trinketById(ids[i]);
+    if(item && item.forceLegendary) return true;
+  }
+  return false;
+}
 export function rollQuality(){
+  // Dev Luck Tablet: skips the roll entirely rather than just nudging it --
+  // this is a 1-in-10,000,000 catch, it's allowed to be absolute.
+  if(hasForceLegendaryTrinket()) return {stars:5, float:0};
   // The float is the single source of truth. Lower is rarer/better.
   // 5-star begins at 1/1,000 odds and 4-star at 1/200 odds.
   var fl = Math.random();

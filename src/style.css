@@ -746,6 +746,20 @@
   color: #F3B8A4;
   border-color: rgba(243, 184, 164, .45);
 }
+/* Quick-Buy Bait upgrade (see UPGRADES in data.js): once owned, tapping this
+   counter buys 5 bait outright, so it gets the same tappable affordance as
+   the shop-buy buttons instead of looking like a plain readout. */
+#dockScene .bait-storage-count.buyable {
+  cursor: pointer;
+  border-color: rgba(217, 164, 65, .55);
+}
+#dockScene .bait-storage-count.buyable:hover {
+  background: rgba(217, 164, 65, .18);
+  border-color: var(--gold);
+}
+#dockScene .bait-storage-count.buyable:active {
+  transform: scale(.95);
+}
 
 /* Smaller layout for phones */
 @media (max-width: 700px) {

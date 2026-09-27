@@ -190,7 +190,7 @@ export function makeBaitCounts(){
 // omitted); the two starter trinkets with real effects are lobster_claw
 // (+25% fishing speed) and bass_lure (50% chance a cast uses no bait).
 export var COLLECTION_LOG_ITEMS = [
-  {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad.", trinket:true},
+  {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad. Weirdly comfortable once it's broken in, though -- worn-in soles make casting a little quicker.", trinket:true, speedBonus:0.1},
   {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true},
   {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true},
   {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true},
@@ -208,13 +208,25 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true},
   {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
   {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
-  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true}
+  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true},
+  // Not tied to any single species (fishId:null) -- every cast, from any
+  // fish, gets a shot at this one. logItemForFish() only ever matches by an
+  // exact fishId string, so a null fishId here can never collide with a
+  // per-species lookup; universalLogItems() below is how grantFish() finds
+  // it instead. While equipped, every catch is forced to 5-star/Legendary
+  // (see the forceLegendary check in rollQuality(), state.js).
+  {id:'dev_luck', fishId:null, universal:true, name:'Dev Luck Tablet', icon:'📱', chance:0.0000001, trinket:true, forceLegendary:true, flavor:'1 in 10,000,000. How did you catch this?'}
 ];
 // Trinkets aren't tied to a body slot like clothing — any owned trinket can
 // fill any of the equipped slots, up to TRINKET_SLOTS at once.
 export var TRINKET_SLOTS = 3;
 export function trinketItems(){ return COLLECTION_LOG_ITEMS.filter(function(item){ return !!item.trinket; }); }
 export function trinketById(id){ return trinketItems().filter(function(item){ return item.id===id; })[0] || null; }
+// Collection-log items that can drop from ANY catch instead of one species
+// (currently just the Dev Luck Tablet) -- rolled separately in grantFish()
+// since logItemForFish()/mythicLogItemsForFish() both look items up by a
+// specific fishId.
+export function universalLogItems(){ return COLLECTION_LOG_ITEMS.filter(function(item){ return !!item.universal; }); }
 var MYTHIC_LOG_ITEMS = [];
 export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 // Fish ids in this list get 5 named, wearable mythic pieces (one per slot in
@@ -265,7 +277,10 @@ export var CHALLENGES = [
   // curiosities. It now also holds 95 mythic drops (113 possible entries
   // total), so the old cap let players max this out almost immediately with
   // no further progression. Tiers now run the full length of the log, with
-  // the final tier a genuine completionist milestone.
+  // the final tier a genuine completionist milestone. The log actually holds
+  // 114 entries as of the Dev Luck Tablet (a 1-in-10,000,000 universal
+  // drop), but the final tier deliberately stays at 113 -- a completionist
+  // goal shouldn't hinge on a catch that unlikely.
   {id:'log', name:'Find collection log items', icon:'📜', tiers:[1,5,15,30,60,113], rewards:[25,100,300,750,2000,5000], progress:function(){ return Object.keys(state.collectionLog||{}).length; }}
 ].concat(FISH.map(function(fish){
   return {id:'fish_'+fish.id, name:'Catch '+fish.name, icon:FISH_CHALLENGE_ICONS[fish.id] || '🐟', tiers:FISH_CATCH_THRESHOLDS, rewards:[0,0,0,0,0,0,0,0,0], rewardType:'cosmetic', progress:function(){ return state.caught[fish.id] || 0; }};
@@ -290,6 +305,14 @@ export var UPGRADES = [
     level:10,
     cost:500,
     desc:'Automatically sells any catch at or below a star threshold you choose (1–3 stars), so your bucket never fills up while you’re away from the dock. Trophy-tier 4–5 star catches are never auto-sold. Off by default -- pick a threshold after buying.'
+  },
+  {
+    id:'quick_buy_bait',
+    name:'Quick-Buy Bait',
+    icon:'🎣',
+    level:5,
+    cost:150,
+    desc:'Tap the bait counter in the fishing window to instantly buy 5 bait for your current gear, at the same price as a pack from the shop. No more digging through the Bait tab mid-session.'
   }
 ];
 export function upgradeById(id){ for(var i=0;i<UPGRADES.length;i++){ if(UPGRADES[i].id===id) return UPGRADES[i]; } return null; }
