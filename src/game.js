@@ -245,7 +245,11 @@ export function levelUnlockText(level){
 // the cast-completion handler below, which suppresses grantFish()'s own
 // showCatchFeedback call on both catches and calls this once, combined,
 // after it has both results).
-export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel, bonus){
+// `pbLabel` (optional): grantFish()'s pbLabel string ('NEW BEST CATCH EVER!'
+// or 'NEW <FISH> PB!') when this catch just broke the all-time or per-species
+// float record -- shown as its own banner, same treatment as the LEVEL UP one
+// below, just gold instead of the level-up's fanfare colors.
+export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel, bonus, pbLabel){
   if(!animationsEnabled) return;
   // The popup's CSS animation is authored for a fixed 2.2-2.75s (see
   // .fx-catch in style.css), but at high fishing speed a cast can complete
@@ -317,6 +321,13 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel, b
     wrap.appendChild(p);
   }
 
+  if(pbLabel){
+    var pbFx = document.createElement('div');
+    pbFx.className = 'fx-item fx-pb';
+    pbFx.textContent = pbLabel;
+    wrap.appendChild(pbFx);
+  }
+
   if(leveledUp){
     var levelFx = document.createElement('div');
     levelFx.className = 'fx-item fx-level';
@@ -361,11 +372,15 @@ function dismissRareCard(card){
     startAutoFish();
   }
 }
-export function showMegaRareFeedback(item, fish, isNew){
+// dupCount: this item's total owned count AFTER this find (state.collectionLog[item.id]),
+// so a repeat find can say "you now own N" instead of just repeating the same
+// "found it" card a first find shows with no way to tell them apart.
+export function showMegaRareFeedback(item, fish, isNew, dupCount){
   var layer = rareLayer();
   var reveal = document.createElement('div');
   reveal.className = 'mega-rare-reveal rare-persist';
   reveal.innerHTML = '<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">MEGA RARE FIND</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">Found while fishing for '+fish.name+'</div>'+
+    (isNew ? '' : '<div class="mega-rare-dupe">Duplicate -- you now own '+(dupCount||1)+'.</div>')+
     '<div class="rare-actions"><button class="btn-secondary rare-close" type="button">Nice!</button></div>';
   layer.appendChild(reveal);
   for(var i=0;i<28;i++){
@@ -415,7 +430,7 @@ function showChestRewardFeedback(item, isNew){
   reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
   playUniqueFoundSound(isNew);
 }
-export function showLegendaryFeedback(fish, stars, float, catchId){
+export function showLegendaryFeedback(fish, stars, float, catchId, pbLabel){
   var layer = rareLayer();
   var reveal = document.createElement('div');
   reveal.className = 'legendary-reveal rare-persist';
@@ -424,6 +439,7 @@ export function showLegendaryFeedback(fish, stars, float, catchId){
   for(var i=0;i<state.inventory.length;i++){ if(state.inventory[i].catchId === catchId){ entry = state.inventory[i]; break; } }
   var price = entry ? sellPrice(fish, entry) : 0;
   reveal.innerHTML = '<div class="legendary-kicker">'+quality.label.toUpperCase()+' CATCH</div><div class="legendary-icon">'+fishDisplayEmoji(fish)+'</div><div class="legendary-name">'+fish.name+'</div><div class="legendary-stars">'+starsText(stars)+'</div><div class="legendary-details">Float '+formatFloat({float:float})+' · '+quality.label+' · Rarity '+floatRarityText({float:float})+'</div>'+
+    (pbLabel ? '<div class="legendary-pb">'+pbLabel+'</div>' : '')+
     (entry
       ? '<div class="rare-actions"><button class="btn-secondary" data-act="trophy" data-soundless="true" type="button">🏆 Trophy</button><button class="btn-primary" data-act="sell" data-soundless="true" type="button">Sell '+price+' ⛃</button><button class="btn-secondary rare-close" data-act="keep" type="button">Keep in bucket</button></div>'
       : '<div class="rare-actions"><button class="btn-secondary rare-close" data-act="keep" type="button">Close</button></div>');
@@ -916,13 +932,23 @@ export function grantFish(fish, forcedQuality, opts){
   refreshRecentCatches();
   
 
-  if(state.records.bestFishId === null || fl < state.records.bestFloat){
+  // Checked BEFORE either record is overwritten below, so a catch that ties
+  // or breaks the standing best is still recognized as the moment it happened
+  // -- pbLabel then rides along in the result/feedback the same way xpGained
+  // does, rather than the UI re-deriving it from records that have already
+  // moved on by the time anything reads them.
+  var isNewOverallPB = state.records.bestFishId === null || fl < state.records.bestFloat;
+  var isNewSpeciesPB = state.records.perSpeciesFloat[fish.id] == null || fl < state.records.perSpeciesFloat[fish.id];
+  // An overall PB is always also that species' best, so it takes priority
+  // over the (redundant) species-only label rather than showing both.
+  var pbLabel = isNewOverallPB ? 'NEW BEST CATCH EVER!' : (isNewSpeciesPB ? 'NEW ' + fish.name.toUpperCase() + ' PB!' : null);
+  if(isNewOverallPB){
     state.records.bestFloat = fl;
     state.records.bestStars = stars;
     state.records.bestFishId = fish.id;
     state.records.bestCatchId = newCatchId;
   }
-  if(state.records.perSpeciesFloat[fish.id] == null || fl < state.records.perSpeciesFloat[fish.id]){
+  if(isNewSpeciesPB){
     state.records.perSpeciesFloat[fish.id] = fl;
     state.records.perSpeciesStars[fish.id] = stars;
     state.records.perSpeciesCatchId[fish.id] = newCatchId;
@@ -934,7 +960,7 @@ export function grantFish(fish, forcedQuality, opts){
     var isNewLogItem = !state.collectionLog[logItem.id];
     state.collectionLog[logItem.id] = (state.collectionLog[logItem.id]||0) + 1;
     setTimeout(function(){
-      showMegaRareFeedback(logItem, fish, isNewLogItem);
+      showMegaRareFeedback(logItem, fish, isNewLogItem, state.collectionLog[logItem.id]);
       showToast((isNewLogItem ? 'New collection log item! ' : 'Found another ') + logItem.icon + ' ' + logItem.name + '.');
     }, isNewLogItem ? 1400 : 1100);
   }
@@ -943,7 +969,7 @@ export function grantFish(fish, forcedQuality, opts){
     var isNewMythic = !state.collectionLog[mythicItem.id];
     state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
     setTimeout(function(){
-      showMegaRareFeedback(mythicItem, fish, isNewMythic);
+      showMegaRareFeedback(mythicItem, fish, isNewMythic, state.collectionLog[mythicItem.id]);
       showToast((isNewMythic ? 'Mythic find! ' : 'Found another ') + mythicItem.icon + ' ' + mythicItem.name + ' ' + fish.name + '.');
     }, isNewMythic ? 1400 : 1100);
   });
@@ -954,7 +980,7 @@ export function grantFish(fish, forcedQuality, opts){
     var isNewUniversal = !state.collectionLog[uItem.id];
     state.collectionLog[uItem.id] = (state.collectionLog[uItem.id]||0) + 1;
     setTimeout(function(){
-      showMegaRareFeedback(uItem, fish, isNewUniversal);
+      showMegaRareFeedback(uItem, fish, isNewUniversal, state.collectionLog[uItem.id]);
       showToast((isNewUniversal ? (uItem.rareLabel || 'Impossible find! ') : 'Found another ') + uItem.icon + ' ' + uItem.name + '.');
     }, isNewUniversal ? 1400 : 1100);
   });
@@ -985,10 +1011,10 @@ export function grantFish(fish, forcedQuality, opts){
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
   if(!suppressFeedback){
-    showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel);
+    showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel, null, pbLabel);
     playCatchSound(stars);
   }
-  if(stars >= 4 && !isBonusCatch) showLegendaryFeedback(fish, stars, fl, newCatchId);
+  if(stars >= 4 && !isBonusCatch) showLegendaryFeedback(fish, stars, fl, newCatchId, pbLabel);
   if(autoSoldPrice) showCoinGain(autoSoldPrice);
   if(leveledUp){
     playLevelSound(LEVEL_MILESTONES.indexOf(afterLevel) >= 0);
@@ -999,7 +1025,14 @@ export function grantFish(fish, forcedQuality, opts){
   } else if(stars >= 4 && isBonusCatch){
     setTimeout(function(){ showToast('That bonus '+fish.name+' was '+starsText(stars)+'! Kept in the bucket automatically.'); }, 700);
   }
-  return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained, afterLevel: afterLevel, newCatchId: newCatchId};
+  // A bonus catch's own popup is folded into the primary's combined double-catch
+  // popup (see the cast-completion handler below), which has no room for a
+  // second PB banner -- surface it as a toast instead so a bonus-fish PB is
+  // never silently dropped.
+  if(pbLabel && isBonusCatch){
+    setTimeout(function(){ showToast(pbLabel + ' (on the bonus ' + fish.name + ')'); }, 1000);
+  }
+  return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained, afterLevel: afterLevel, newCatchId: newCatchId, pbLabel: pbLabel};
 }
 // ---------- Recent catch feed ----------
 export function refreshRecentCatches(){
@@ -1471,7 +1504,7 @@ export function beginSingleCast(sessionId){
     if(willDoubleCatch){
       var bonusResult = grantFish(fish, null, {isBonusCatch:true, suppressFeedback:true});
       setTimeout(function(){ animateFishToBucket(fish, bonusResult.stars); }, 180);
-      showCatchFeedback(fish, result.stars, result.float, result.xpGained, result.leveledUp, result.afterLevel, {fish:fish, stars:bonusResult.stars, xp:bonusResult.xpGained});
+      showCatchFeedback(fish, result.stars, result.float, result.xpGained, result.leveledUp, result.afterLevel, {fish:fish, stars:bonusResult.stars, xp:bonusResult.xpGained}, result.pbLabel);
       playDoubleCatchSound();
     }
 
@@ -1552,7 +1585,7 @@ function resolveBigOneOutcome(fish, bigOneItem, success, info){
     state.collectionLog[uniqueItem.id] = (state.collectionLog[uniqueItem.id]||0) + 1;
     saveState();
     setTimeout(function(){
-      showMegaRareFeedback(uniqueItem, fish, isNewUnique);
+      showMegaRareFeedback(uniqueItem, fish, isNewUnique, state.collectionLog[uniqueItem.id]);
       showToast((isNewUnique ? 'Bonus find! ' : 'Found another ') + uniqueItem.icon + ' ' + uniqueItem.name + '.');
     }, 1400);
   }
