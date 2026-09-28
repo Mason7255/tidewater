@@ -7,7 +7,7 @@
 
 
 import { playerLevel, totalFishCaught } from './game.js';
-import { state } from './state.js';
+import { fishDisplayEmoji, state } from './state.js';
 
 export var LEVEL_CAP = 99;
 export var xpTable = [0, 0];
@@ -191,7 +191,7 @@ export function makeBaitCounts(){
 // (+25% fishing speed) and bass_lure (50% chance a cast uses no bait).
 export var COLLECTION_LOG_ITEMS = [
   {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad. Weirdly comfortable once it's broken in, though -- worn-in soles make casting a little quicker.", trinket:true, speedBonus:0.1},
-  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true},
+  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true, mythicLuckBonus:0.1},
   {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true},
   {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true},
   {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true},
@@ -205,7 +205,7 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.', trinket:true},
   {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.', trinket:true},
   {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.', trinket:true},
-  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true, speedBonus:0.25},
+  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true},
   {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
   {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
   {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true},
@@ -231,24 +231,36 @@ var MYTHIC_LOG_ITEMS = [];
 export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 // Fish ids in this list get 5 named, wearable mythic pieces (one per slot in
 // CLOTHING_SLOTS) instead of the generic "Mythic 1-5" flavor items below.
-// Each piece's speedBonus stacks additively and reduces cast time — see
-// totalClothingSpeedBonus()/castDurationMs() in game.js. Add a fish's id
-// here (and a matching entry in CLOTHING_SETS) to extend clothing to it.
-var CLOTHING_FISH_IDS = ['shrimp'];
+// Each piece carries its own bonus field, so different outfits can
+// specialize in different things: speedBonus stacks additively and reduces
+// cast time (see totalClothingSpeedBonus()/castDurationMs() in game.js);
+// luckBonus stacks additively and nudges the quality roll toward better
+// catches (see totalClothingLuckBonus()/rollQuality() in state.js). Add a
+// fish's id here (and a matching entry in CLOTHING_SETS) to extend clothing
+// to it.
+var CLOTHING_FISH_IDS = ['shrimp', 'anchovies'];
+var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
+var CLOTHING_LUCK_BONUS_PER_PIECE = 0.02; // 5 pieces => 10% total when a full set is equipped
 var CLOTHING_SETS = {
   shrimp: [
-    {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.'},
-    {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.'},
-    {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.'},
-    {slot:'shoes', name:'Shrimp-foot Boots', icon:'🦐', flavor:'Somehow lets you feel the current through the sole.'},
-    {slot:'gloves', name:'Shrimp-claw Gloves', icon:'🦐', flavor:'A firmer grip on the rod than you have ever had.'}
+    {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
+    {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Shrimp-foot Boots', icon:'🦐', flavor:'Somehow lets you feel the current through the sole.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Shrimp-claw Gloves', icon:'🦐', flavor:'A firmer grip on the rod than you have ever had.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE}
+  ],
+  anchovies: [
+    {slot:'hat', name:'Anchovy-scale Cap', icon:'🐟', flavor:'Catches the light like a tiny disco ball.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Anchovy-tin Vest', icon:'🐟', flavor:'Smells faintly of the harbor. Somehow charming.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
+    {slot:'pants', name:'Anchovy-school Trousers', icon:'🐟', flavor:'A shimmer that seems to move on its own.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Anchovy-fin Loafers', icon:'🐟', flavor:'Every step smells faintly of the boardwalk.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Anchovy-oil Gloves', icon:'🐟', flavor:'Slippery. Lucky, apparently, not clumsy.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE}
   ]
 };
-var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 FISH.forEach(function(fish){
   if(CLOTHING_FISH_IDS.indexOf(fish.id) >= 0){
     CLOTHING_SETS[fish.id].forEach(function(piece){
-      MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+piece.slot, fishId:fish.id, slot:piece.slot, name:piece.name, icon:piece.icon, chance:0.001, mythic:true, clothing:true, speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, flavor:piece.flavor});
+      MYTHIC_LOG_ITEMS.push(Object.assign({id:'mythic_'+fish.id+'_'+piece.slot, fishId:fish.id, chance:0.001, mythic:true, clothing:true}, piece));
     });
     return;
   }
@@ -261,6 +273,50 @@ export function logItemById(id){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){
 export function logItemForFish(fishId){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){ if(COLLECTION_LOG_ITEMS[i].fishId===fishId) return COLLECTION_LOG_ITEMS[i]; } return null; }
 export function mythicLogItemsForFish(fishId){ return MYTHIC_LOG_ITEMS.filter(function(item){ return item.fishId===fishId; }); }
 export function clothingItems(){ return MYTHIC_LOG_ITEMS.filter(function(item){ return !!item.clothing; }); }
+
+// ---------- "Big One" encounters ----------
+// A rarer-than-mythic (see BIG_ONE_CHANCE below), skill-based encounter: land
+// it via the tap-circle minigame (game.js) instead of a pure luck roll. One
+// per species, added to the Collection Log as its own tier. bigOne:true marks
+// it so the Log/UI can badge it separately from trinket/mythic entries.
+export var BIG_ONE_LOG_ITEMS = FISH.map(function(fish, idx){
+  return {
+    id: 'bigone_'+fish.id,
+    fishId: fish.id,
+    tier: idx,
+    name: 'Big '+fish.name,
+    icon: fishDisplayEmoji(fish),
+    bigOne: true,
+    flavor: 'The one that got away from everyone else. Landing this one took real skill, not just luck.'
+  };
+});
+COLLECTION_LOG_ITEMS = COLLECTION_LOG_ITEMS.concat(BIG_ONE_LOG_ITEMS);
+export function bigOneLogItemForFish(fishId){ return BIG_ONE_LOG_ITEMS.filter(function(item){ return item.fishId===fishId; })[0] || null; }
+// Chance, per catch of a species whose Big One hasn't been logged yet, that
+// this cast turns into a Big One encounter instead of resolving normally.
+// Rarer than a mythic (1/1000) and a notch more common than a species' own
+// unique (1/5,000) -- landing on purpose, via a minigame, is the point, not
+// grinding casts for a pure-luck roll.
+export var BIG_ONE_CHANCE = 1/2000;
+// On a successful Big One catch, an extra shot at that species' own unique
+// item (logItemForFish) as a bonus -- on top of the guaranteed Collection Log
+// entry, not instead of it.
+export var BIG_ONE_UNIQUE_BONUS_CHANCE = 0.1;
+// Per-species minigame difficulty. Both the circle count and shrink speed
+// scale up together with how far into FISH a species sits (idx 0 = Shrimp,
+// idx FISH.length-1 = Leviathan), while the hit/total ratio stays roughly
+// constant -- so late-game Big Ones are meaningfully harder to land, not just
+// reskinned. Bumped up a full notch from the original pass (more circles,
+// faster shrink at every tier) after early testing felt too easy/slow.
+export function bigOneDifficultyForFish(fish){
+  var idx = FISH.indexOf(fish);
+  if(idx < 0) idx = 0;
+  return {
+    circles: Math.min(16, 9 + Math.floor(idx/2)),
+    need: Math.min(12, 6 + Math.floor(idx/3)),
+    lifetimeMs: Math.max(450, 1100 - idx*36)
+  };
+}
 export function clothingItemsForSlot(slot){ return clothingItems().filter(function(item){ return item.slot===slot; }); }
 
 // Challenges are tiered. Claiming one removes it and immediately advances that

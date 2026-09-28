@@ -7,9 +7,9 @@
 
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
-import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
+import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
 import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
-import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
+import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus } from './state.js';
 
 document.getElementById('sceneInventoryBtn').addEventListener('click', function(){ renderInventoryList(); showScreen('screen-inventory'); });
 document.getElementById('backFromInventory').addEventListener('click', function(){ showScreen('screen-dock'); });
@@ -279,9 +279,12 @@ export function renderLog(){
     // only right by coincidence for uniques (chance 0.0002 = 1/5000) and
     // wrong for mythics (chance 0.001 = 1/1000). Compute it from the item's
     // real chance instead so it's correct for both.
-    var oddsText = '1/'+Math.round(1/item.chance).toLocaleString()+' drop';
+    // Big One entries aren't a luck roll -- they're won through the tap
+    // minigame, so there's no drop chance to compute or show.
+    var oddsText = item.bigOne ? 'Big One minigame' : ('1/'+Math.round(1/item.chance).toLocaleString()+' drop');
     var sourceText = item.universal ? 'From any catch' : ('From ' + (fish ? fish.name : '?'));
     var subtext = owned ? '×'+owned+' · '+oddsText : (sourceText+' · '+oddsText);
+    tile.className += item.bigOne ? ' fish-tile-bigone' : '';
     tile.innerHTML =
       '<div class="dot" style="background:rgba(217,164,65,0.16); color:var(--gold);">'+(owned ? item.icon : '?')+'</div>' +
       '<div class="fname">'+(owned ? item.name : '???')+'</div>' +
@@ -594,15 +597,24 @@ export function renderOwnedEquipment(){
   });
 }
 
+function clothingBonusText(item){
+  if(item.speedBonus) return '+'+Math.round(item.speedBonus*100)+'% fishing speed.';
+  if(item.luckBonus) return '+'+Math.round(item.luckBonus*100)+'% catch luck.';
+  return 'No bonus yet.';
+}
 export function renderClothing(){
   var list=document.getElementById('clothingList'); list.innerHTML='';
-  var bonusPct = Math.round(totalClothingSpeedBonus()*100);
+  var speedPct = Math.round(totalClothingSpeedBonus()*100);
+  var luckPct = Math.round(totalClothingLuckBonus()*100);
+  var bonusBits = [];
+  if(speedPct>0) bonusBits.push('+'+speedPct+'% fishing speed');
+  if(luckPct>0) bonusBits.push('+'+luckPct+'% catch luck');
   var summary=document.createElement('div'); summary.className='clothing-summary';
-  summary.textContent = 'Total fishing speed bonus from equipped clothing: +'+bonusPct+'%';
+  summary.textContent = 'From equipped clothing: '+(bonusBits.length ? bonusBits.join(', ') : 'no bonuses yet');
   list.appendChild(summary);
   CLOTHING_SLOTS.forEach(function(slot){
     var options = clothingItemsForSlot(slot);
-    if(!options.length) return; // no pieces exist for this slot yet (only shrimp has a set so far)
+    if(!options.length) return; // no pieces exist for this slot yet (only a few fish have a full set so far)
     var equippedId = equippedClothingId(slot);
     var section=document.createElement('div'); section.className='clothing-slot-section';
     var label=document.createElement('div'); label.className='clothing-slot-label'; label.textContent=slot.charAt(0).toUpperCase()+slot.slice(1);
@@ -617,7 +629,7 @@ export function renderClothing(){
         '<div class="shop-body">'+
           '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
           '<div class="shop-desc">'+(owned
-            ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed. '+item.flavor)
+            ? (clothingBonusText(item)+' '+item.flavor)
             : ('Not discovered yet — this is a rare mythic catch from '+(fish?fish.name:'this species')+'.'))+'</div>'+
         '</div>'+
         (owned ? (equipped
@@ -646,6 +658,7 @@ export function renderTrinkets(){
   var summary=document.createElement('div'); summary.className='clothing-summary';
   var speedPct = Math.round(totalTrinketSpeedBonus()*100);
   var noBaitPct = Math.round(trinketNoBaitChance()*100);
+  var mythicLuckPct = Math.round(totalMythicLuckBonus()*100);
   var forceLegendaryOn = false;
   trinketItems().forEach(function(item){
     if(!isTrinketEquipped(item.id)) return;
@@ -655,6 +668,7 @@ export function renderTrinkets(){
   var bonusBits = [];
   if(speedPct > 0) bonusBits.push('+'+speedPct+'% fishing speed');
   if(noBaitPct > 0) bonusBits.push(noBaitPct+'% chance to use no bait');
+  if(mythicLuckPct > 0) bonusBits.push('+'+mythicLuckPct+'% chance to find mythics/uniques');
   if(forceLegendaryOn) bonusBits.push('every catch guaranteed 5★');
   summary.textContent = equippedCount+' / '+TRINKET_SLOTS+' trinket slots used'+(bonusBits.length ? ' — '+bonusBits.join(', ') : '');
   list.appendChild(summary);
@@ -664,7 +678,10 @@ export function renderTrinkets(){
     var fish = fishById(item.fishId);
     var bonusText = item.forceLegendary
       ? 'Every catch is a guaranteed 5★ (Legendary) catch while equipped.'
-      : (item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.') : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.') : 'No bonus yet.'));
+      : (item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.')
+      : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.')
+      : (item.mythicLuckBonus ? ('+'+Math.round(item.mythicLuckBonus*100)+'% chance to find mythic and unique items (any species).')
+      : 'No bonus yet.')));
     var discoveryText = item.universal
       ? 'Not discovered yet — an almost impossible 1-in-10,000,000 find from any catch, of any species.'
       : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.');

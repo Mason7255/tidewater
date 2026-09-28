@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
+import { BAIT_TYPES, CLOTHING_SLOTS, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, baitById, clothingItems, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -229,6 +229,23 @@ function hasForceLegendaryTrinket(){
   }
   return false;
 }
+// Sum of luckBonus across equipped clothing (the Anchovy outfit and any
+// future luck-themed set) -- same shape as game.js's totalClothingSpeedBonus,
+// just kept here instead since rollQuality() (below) needs it and game.js
+// already imports FROM this file, so importing back the other way would be
+// a circular import. isClothingOwned() lives in game.js for the same reason;
+// this checks state.collectionLog directly rather than pulling that helper in.
+export function totalClothingLuckBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !(state.collectionLog && state.collectionLog[id])) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.luckBonus || 0;
+  });
+  return Math.min(total, 0.5); // safety ceiling, same spirit as the speed one
+}
 export function rollQuality(){
   // Dev Luck Tablet: skips the roll entirely rather than just nudging it --
   // this is a 1-in-10,000,000 catch, it's allowed to be absolute.
@@ -243,6 +260,11 @@ export function rollQuality(){
     var sixPack = consumableById('six_pack');
     fl *= (1 - (sixPack ? sixPack.magnitude : 0));
   }
+  // The Anchovy outfit's luck bonus works the same way -- lower float reads
+  // as a better catch, so a full 5-piece set (10%) shifts the whole curve
+  // toward higher stars without touching the separate mythic-drop odds.
+  var clothingLuck = totalClothingLuckBonus();
+  if(clothingLuck > 0) fl *= (1 - clothingLuck);
   return {stars:starsFromFloat(fl), float:fl};
 }
 function legacyFloatFromRating(rating){

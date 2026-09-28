@@ -12,8 +12,8 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
+import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
+import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -550,6 +550,24 @@ export function totalTrinketSpeedBonus(){
   });
   return Math.min(total, 0.9);
 }
+// Silver Ring (the Anchovy unique): a relative multiplier on the chance of
+// finding a fish-specific unique (logItemForFish) or mythic/outfit piece
+// (mythicLogItemsForFish), applied in grantFish() below. Deliberately NOT
+// applied to universal drops (the Dev Luck Tablet) -- that one's meant to
+// stay an absolute 1-in-10,000,000 regardless of anything else equipped.
+// Relative (chance * (1+bonus)), not additive, since these chances are tiny
+// fractions (0.0002, 0.001) -- an additive +10 percentage points would
+// obliterate the whole rarity curve instead of nudging it.
+export function totalMythicLuckBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.mythicLuckBonus || 0;
+  });
+  return Math.min(total, 1); // safety ceiling: at most a 2x multiplier
+}
 export function trinketNoBaitChance(){
   if(!state.equippedTrinkets) return 0;
   var chance = 0;
@@ -733,8 +751,9 @@ export function grantFish(fish, forcedQuality){
     state.records.perSpeciesCatchId[fish.id] = newCatchId;
   }
 
+  var mythicLuck = totalMythicLuckBonus();
   var logItem = logItemForFish(fish.id);
-  if(logItem && Math.random() < logItem.chance){
+  if(logItem && Math.random() < Math.min(1, logItem.chance * (1 + mythicLuck))){
     var isNewLogItem = !state.collectionLog[logItem.id];
     state.collectionLog[logItem.id] = (state.collectionLog[logItem.id]||0) + 1;
     setTimeout(function(){
@@ -743,7 +762,7 @@ export function grantFish(fish, forcedQuality){
     }, isNewLogItem ? 1400 : 1100);
   }
   mythicLogItemsForFish(fish.id).forEach(function(mythicItem){
-    if(Math.random() >= mythicItem.chance) return;
+    if(Math.random() >= Math.min(1, mythicItem.chance * (1 + mythicLuck))) return;
     var isNewMythic = !state.collectionLog[mythicItem.id];
     state.collectionLog[mythicItem.id] = (state.collectionLog[mythicItem.id]||0) + 1;
     setTimeout(function(){
@@ -1248,17 +1267,245 @@ export function beginSingleCast(sessionId){
     autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+fish.xp+' xp</span>';
     if(autoFishProgressFill) autoFishProgressFill.style.width = '100%';
 
-    if(result.stars >= 4){
+    // "Big One" roll: independent of the normal catch above (that fish is
+    // already caught either way) -- only for a species whose Big One hasn't
+    // been logged yet, so the encounter never re-fires once you've landed it.
+    var bigOneItem = bigOneLogItemForFish(fish.id);
+    var triggerBigOne = !bigOneActive && bigOneItem && !state.collectionLog[bigOneItem.id] && Math.random() < BIG_ONE_CHANCE;
+
+    if(triggerBigOne || result.stars >= 4){
       autoFishing = false;
       fishingSessionId++;
       activeCastId++;
       clearFishingTimer();
       parkRodIdle();
+      if(triggerBigOne){
+        // Let the normal catch popup play out first, then the sting + banner.
+        setTimeout(function(){ beginBigOneEncounter(fish, bigOneItem); }, 1500);
+      }
       return;
     }
 
     // Only after the single fish has been awarded do we schedule the next cast.
     queueNextCast(sessionId, 550);
   }, duration);
+}
+
+// ---------------------------------------------------------------------------
+// "Big One" encounter: sting + banner (showBigOneBanner, above) -> tap-circle
+// minigame -> reward. Fishing is left paused throughout (same as any 4-5 star
+// trophy catch) so the encounter can never be missed while the player is
+// away -- it just waits, however long that takes, for Press Start.
+// ---------------------------------------------------------------------------
+var bigOneActive = false;
+
+export function beginBigOneEncounter(fish, bigOneItem){
+  bigOneActive = true;
+  showBigOneBanner(fish, function(){
+    startBigOneMinigame(fish, function(success, info){
+      bigOneActive = false;
+      resolveBigOneOutcome(fish, bigOneItem, success, info);
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// DEV TOOL -- temporary, only reachable via the "Dev tools" toggle in Options
+// (menu.js/index.html). Skips the 1/2,000 roll and the "already logged"
+// guard entirely so the encounter can be tested on demand; not tied to the
+// real fishing loop at all, so it works whether or not a cast is in flight.
+// ---------------------------------------------------------------------------
+export function forceBigOneEncounter(){
+  if(bigOneActive){ showToast('A Big One encounter is already in progress.'); return; }
+  var eq = currentEquipment();
+  var fish = eq ? fishById(eq.fishId) : null;
+  if(!fish){ showToast('Equip a rod and select a fish before forcing a Big One.'); return; }
+  var bigOneItem = bigOneLogItemForFish(fish.id);
+  if(!bigOneItem){ showToast('No Big One entry exists for '+fish.name+'.'); return; }
+  clearFishingTimer();
+  autoFishing = false;
+  fishingSessionId++;
+  activeCastId++;
+  parkRodIdle();
+  beginBigOneEncounter(fish, bigOneItem);
+}
+
+function resolveBigOneOutcome(fish, bigOneItem, success, info){
+  if(!success){
+    playBigOneMissSound();
+    showToast('The ' + fish.name + ' shook loose -- ' + info.hits + '/' + info.need + ' needed. It might come back around.');
+    return;
+  }
+  var isNew = !state.collectionLog[bigOneItem.id];
+  state.collectionLog[bigOneItem.id] = (state.collectionLog[bigOneItem.id]||0) + 1;
+  saveState();
+  updateHud();
+  var logScreen = document.getElementById('screen-log');
+  if(logScreen && logScreen.classList.contains('active')) renderLog();
+  playBigOneWinSound();
+  showBigOneRewardFeedback(bigOneItem, fish, info);
+  showToast((isNew ? 'Big One landed! ' : 'Landed another ') + bigOneItem.icon + ' ' + bigOneItem.name + '.');
+
+  var uniqueItem = logItemForFish(fish.id);
+  if(uniqueItem && Math.random() < BIG_ONE_UNIQUE_BONUS_CHANCE){
+    var isNewUnique = !state.collectionLog[uniqueItem.id];
+    state.collectionLog[uniqueItem.id] = (state.collectionLog[uniqueItem.id]||0) + 1;
+    saveState();
+    setTimeout(function(){
+      showMegaRareFeedback(uniqueItem, fish, isNewUnique);
+      showToast((isNewUnique ? 'Bonus find! ' : 'Found another ') + uniqueItem.icon + ' ' + uniqueItem.name + '.');
+    }, 1400);
+  }
+}
+
+// Reuses the mega-rare celebration layer/particles, with Big-One-specific
+// copy (kicker + hit-count line) in place of the "MEGA RARE FIND" wording.
+function showBigOneRewardFeedback(item, fish, info){
+  var layer = rareLayer();
+  var reveal = document.createElement('div');
+  reveal.className = 'mega-rare-reveal rare-persist';
+  reveal.innerHTML = '<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">BIG ONE LANDED</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">'+info.hits+'/'+info.total+' circles tapped ('+info.need+' needed)</div>'+
+    '<div class="rare-actions"><button class="btn-secondary rare-close" type="button">Nice!</button></div>';
+  layer.appendChild(reveal);
+  for(var i=0;i<28;i++){
+    var particle = document.createElement('span');
+    particle.className = 'mega-rare-particle';
+    particle.style.setProperty('--mega-x', Math.cos(Math.PI*2*i/28)*(90+Math.random()*150)+'px');
+    particle.style.setProperty('--mega-y', Math.sin(Math.PI*2*i/28)*(70+Math.random()*120)+'px');
+    particle.style.animationDelay = (Math.random()*.18)+'s';
+    reveal.appendChild(particle);
+  }
+  reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
+}
+
+// The tap-circle minigame itself. Circles spawn one at a time inside a
+// full-screen play area; each has a fixed-size (>=44px, never shrinks)
+// pointer target so it's just as tappable on a phone at max difficulty as it
+// is on a desktop mouse -- only the *visual* circle inside shrinks over
+// `lifetimeMs`. Tap before it fully shrinks = hit, otherwise = miss. Exits
+// the moment the outcome is locked in (enough hits to pass, or enough misses
+// that passing is no longer possible) rather than always running every
+// circle, so a clean run doesn't drag on.
+export function startBigOneMinigame(fish, onComplete){
+  var diff = bigOneDifficultyForFish(fish);
+  var total = diff.circles, need = diff.need, lifetimeMs = diff.lifetimeMs;
+  var hits = 0, misses = 0, spawned = 0;
+  var maxMisses = total - need;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'bigone-game-overlay';
+  overlay.innerHTML = '<div class="bigone-game-hud">'+
+    '<div class="bigone-hud-pill hit" id="bigOneHitPill">HIT 0/'+need+'</div>'+
+    '<div class="bigone-hud-pill miss" id="bigOneMissPill">MISS 0/'+(maxMisses+1)+'</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  var hitPill = overlay.querySelector('#bigOneHitPill');
+  var missPill = overlay.querySelector('#bigOneMissPill');
+
+  function updateHudPills(){
+    hitPill.textContent = 'HIT ' + hits + '/' + need;
+    missPill.textContent = 'MISS ' + misses + '/' + (maxMisses+1);
+  }
+
+  function teardown(){
+    if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+  }
+
+  function spawnNext(){
+    if(spawned >= total){ finish(); return; }
+    spawned++;
+
+    var margin = 70; // keep circles off the very edges (and clear of the HUD up top)
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var x = margin + Math.random() * Math.max(1, vw - margin*2);
+    var y = 100 + Math.random() * Math.max(1, vh - margin - 100);
+
+    var wrap = document.createElement('div');
+    wrap.className = 'bigone-circle-wrap';
+    wrap.style.left = x + 'px';
+    wrap.style.top = y + 'px';
+    wrap.innerHTML = '<div class="bigone-circle"></div>';
+    overlay.appendChild(wrap);
+    var circle = wrap.querySelector('.bigone-circle');
+    // Starts as a wide, open ring (scale 1.4, set in CSS) and closes in to a
+    // floor of scale 0.6 -- still a clearly visible, clearly tappable circle
+    // right up to the last instant, never collapsing into a tiny blip.
+    circle.style.transition = 'transform ' + lifetimeMs + 'ms linear, opacity .15s ease';
+    requestAnimationFrame(function(){ circle.style.transform = 'scale(0.6)'; });
+
+    var resolved = false;
+    var timer = setTimeout(function(){
+      if(resolved) return;
+      resolved = true;
+      misses++;
+      wrap.classList.add('resolved-miss');
+      updateHudPills();
+      playBigOneMissTickSound();
+      setTimeout(function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 220);
+      afterResolve();
+    }, lifetimeMs);
+
+    wrap.addEventListener('pointerdown', function(){
+      if(resolved) return;
+      resolved = true;
+      clearTimeout(timer);
+      hits++;
+      wrap.classList.add('resolved-hit');
+      updateHudPills();
+      playBigOneHitSound();
+      setTimeout(function(){ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); }, 220);
+      afterResolve();
+    }, {once:true});
+  }
+
+  function afterResolve(){
+    if(hits >= need){ finish(true); return; }
+    if(misses > maxMisses){ finish(false); return; }
+    setTimeout(spawnNext, 220);
+  }
+
+  function finish(forceResult){
+    var success = typeof forceResult === 'boolean' ? forceResult : hits >= need;
+    setTimeout(function(){
+      teardown();
+      onComplete(success, {hits:hits, misses:misses, total:spawned, need:need});
+    }, 260);
+  }
+
+  spawnNext();
+}
+
+// ---------------------------------------------------------------------------
+// "Big One" encounter banner -- PREVIEW ONLY for now. This is just the
+// announcement moment (sting + banner + Press Start) so it can be reviewed
+// before the tap-circle minigame itself is built. Nothing calls this yet
+// from real gameplay; it's wired up for manual/test triggering in the
+// meantime. `fish` is a FISH entry, `onStart` fires once the player presses
+// the button (this is where the minigame will eventually take over).
+export function showBigOneBanner(fish, onStart){
+  playBigOneSound();
+  var overlay = document.getElementById('bigOneBanner');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'bigOneBanner';
+    overlay.className = 'bigone-overlay';
+    document.body.appendChild(overlay);
+  }
+  var emoji = fish ? fishDisplayEmoji(fish) : '🐟';
+  overlay.innerHTML =
+    '<div class="bigone-card">'+
+      '<div class="bigone-warn">⚠ SOMETHING HUGE ⚠</div>'+
+      '<h2 class="bigone-title">A BIG ONE IS ON THE LINE!</h2>'+
+      '<div class="bigone-fish">'+emoji+'</div>'+
+      '<p class="bigone-sub">'+(fish ? 'It feels like a massive ' + fish.name + '&hellip;' : 'Something massive is pulling back&hellip;')+'</p>'+
+      '<button class="bigone-start-btn" type="button" id="bigOneStartBtn">PRESS START</button>'+
+    '</div>';
+  requestAnimationFrame(function(){ overlay.classList.add('active'); });
+  var btn = overlay.querySelector('#bigOneStartBtn');
+  btn.addEventListener('click', function(){
+    overlay.classList.remove('active');
+    setTimeout(function(){ if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 260);
+    if(typeof onStart === 'function') onStart();
+  }, {once:true});
 }
 

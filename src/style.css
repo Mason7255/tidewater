@@ -359,6 +359,40 @@
   @keyframes fishExplodeBig{ 0%{transform:scale(.2) rotate(-30deg); opacity:0;} 35%{transform:scale(1.65) rotate(22deg); opacity:1;} 55%{transform:scale(.9) rotate(-12deg);} 75%{transform:scale(1.2) rotate(5deg);} 100%{transform:scale(1) rotate(0);} }
   @keyframes particleBurst{ 0%{opacity:0; transform:translate(-50%,-50%) scale(.2);} 18%{opacity:1;} 100%{opacity:0; transform:translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.5);} }
   @media (prefers-reduced-motion: reduce){ .fx-item,.fx-particle{ animation:none; opacity:1; transform:none; } .fx-item{left:50%;} .player-effects{display:block;} .fx-level,.fx-level-sub,.fx-level:before,.player-effects:has(.fx-level):before{ animation:none; opacity:1; } .fx-level{ transform:translate(-50%,-50%) scale(1) rotate(0); } }
+  /* ---------- "Big One" encounter banner ---------- */
+  .bigone-overlay{ position:fixed; inset:0; z-index:2147483647; display:flex; align-items:center; justify-content:center; background:radial-gradient(circle at 50% 50%, rgba(130,15,15,.38), rgba(3,4,6,.9) 72%); opacity:0; pointer-events:none; transition:opacity .25s ease; }
+  .bigone-overlay.active{ opacity:1; pointer-events:auto; }
+  .bigone-card{ text-align:center; padding:0 24px; max-width:420px; }
+  .bigone-warn{ font-family:'Press Start 2P',monospace; font-size:11px; letter-spacing:2px; color:#ff6b5a; text-shadow:2px 2px 0 #000; margin-bottom:16px; animation:bigoneFlicker 1.1s steps(2) infinite; }
+  .bigone-title{ font-family:'Fraunces',serif; font-weight:900; font-size:clamp(26px,7vw,48px); line-height:1.1; color:var(--gold); text-shadow:3px 3px 0 #000,-1px -1px 0 #000; margin:0 0 10px; animation:bigoneShake .5s ease-in-out 3; }
+  .bigone-fish{ font-size:56px; margin:4px 0 16px; animation:bigoneBob 1.4s ease-in-out infinite; }
+  .bigone-sub{ color:var(--silver); font-size:14px; margin:0 0 28px; line-height:1.4; }
+  .bigone-start-btn{ font-family:'Press Start 2P',monospace; font-size:14px; padding:16px 34px; border-radius:10px; border:2px solid var(--gold); background:linear-gradient(180deg,#F4C86A,var(--gold)); color:#1a1408; font-weight:900; cursor:pointer; box-shadow:0 6px 0 #8a641f, 0 10px 24px rgba(0,0,0,.5); animation:bigonePulse 1.1s ease-in-out infinite; min-height:44px; min-width:44px; }
+  .bigone-start-btn:active{ transform:translateY(4px); box-shadow:0 2px 0 #8a641f; }
+  @keyframes bigoneFlicker{ 0%,100%{opacity:1;} 50%{opacity:.35;} }
+  @keyframes bigoneShake{ 0%,100%{transform:translateX(0);} 20%{transform:translateX(-6px) rotate(-1deg);} 40%{transform:translateX(5px) rotate(1deg);} 60%{transform:translateX(-4px);} 80%{transform:translateX(3px);} }
+  @keyframes bigoneBob{ 0%,100%{transform:translateY(0) rotate(-2deg);} 50%{transform:translateY(-8px) rotate(2deg);} }
+  @keyframes bigonePulse{ 0%,100%{transform:scale(1); box-shadow:0 6px 0 #8a641f, 0 10px 24px rgba(0,0,0,.5);} 50%{transform:scale(1.05); box-shadow:0 6px 0 #8a641f, 0 10px 34px rgba(217,164,65,.55);} }
+  @media (prefers-reduced-motion: reduce){ .bigone-title,.bigone-fish,.bigone-warn,.bigone-start-btn{ animation:none; } }
+  /* ---------- "Big One" tap-circle minigame ---------- */
+  .bigone-game-overlay{ position:fixed; inset:0; z-index:2147483647; background:rgba(3,9,15,.55); touch-action:none; }
+  .bigone-game-hud{ position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; gap:8px; }
+  .bigone-hud-pill{ font-family:'Press Start 2P',monospace; font-size:10.5px; color:var(--cream,#f4ead9); text-shadow:2px 2px 0 #000; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:7px 11px; white-space:nowrap; }
+  .bigone-hud-pill.hit{ color:#8CF0B4; }
+  .bigone-hud-pill.miss{ color:#ff9a8a; }
+  /* Fixed-size, never-shrinking pointer target (>=44px on every side) so
+     difficulty scales through how fast/small the *visual* circle inside gets,
+     never through the tappable area itself -- keeps this fair on a phone. */
+  .bigone-circle-wrap{ position:absolute; width:60px; height:60px; margin:-30px 0 0 -30px; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  /* An open (hollow) ring that starts wide and slowly closes in toward a
+     still-clearly-visible floor size (see the scale target in game.js) --
+     never shrinks down to a near-invisible dot the way a filled blob did. */
+  .bigone-circle{ width:100%; height:100%; border-radius:50%; border:5px solid #fff; background:radial-gradient(circle, rgba(255,255,255,.10), transparent 68%); box-shadow:0 0 16px rgba(255,255,255,.55), inset 0 0 12px rgba(255,255,255,.2); transform:scale(1.4); opacity:1; transition:opacity .15s ease; animation:bigoneCirclePop .16s ease-out; }
+  .bigone-circle-wrap.resolved-hit .bigone-circle{ border-color:#4CD787; box-shadow:0 0 20px rgba(76,215,135,.7), inset 0 0 12px rgba(76,215,135,.3); transform:scale(1.7) !important; opacity:0; transition:transform .22s ease-out, opacity .22s ease-out; }
+  .bigone-circle-wrap.resolved-miss .bigone-circle{ border-color:#e8734f; box-shadow:0 0 16px rgba(232,115,79,.6), inset 0 0 12px rgba(232,115,79,.3); opacity:0; transition:opacity .22s ease-out; }
+  @keyframes bigoneCirclePop{ 0%{transform:scale(1.7); opacity:0;} 65%{transform:scale(1.3); opacity:1;} 100%{transform:scale(1.4); opacity:1;} }
+  @media (prefers-reduced-motion: reduce){ .bigone-circle{ animation:none; } }
+  .fish-tile-bigone:not(.locked){ border-color:rgba(217,164,65,.55); box-shadow:0 0 0 1px rgba(217,164,65,.25) inset; }
   .cast-lure{ position:absolute; bottom:92px; left:50%; width:6px; height:6px; border-radius:50%; background:var(--gold); opacity:0; z-index:5; pointer-events:none; }
   .cast-lure.flying{ animation:castFly .5s cubic-bezier(.3,.6,.4,1) forwards; }
   .cast-lure.parked{ left:calc(50% + 72px); bottom:64px; opacity:1; }

@@ -180,6 +180,61 @@ export function playMythicFoundSound(isNew){
   audioTone(440.00, .36, 'square', .10, .30);  // A5 landing
   audioNoise(.10, .02, 2800, .30);
 }
+// "Big One" encounter sting: three low, weighted hits that build in
+// intensity -- "dun... dun... DUNNN" -- to announce a rare catch is on the
+// line, right before the Press Start banner appears. Same building blocks as
+// everything else here (audioTone + audioNoise), just pitched low and paced
+// slow so it reads as a tension cue rather than a pickup/reward sound.
+export function playBigOneSound(){
+  if(!ensureAudio()) return;
+  var beats = [
+    {freq:110,   dur:.30, vol:.15, when:0},    // A2 -- "dun"
+    {freq:110,   dur:.32, vol:.19, when:.46},  // A2, a touch louder -- "dun"
+    {freq:87.31, dur:.85, vol:.25, when:.94}   // F2, lower + longer -- "DUNNN"
+  ];
+  beats.forEach(function(b){
+    audioTone(b.freq, b.dur, 'square', b.vol, b.when);
+    audioTone(b.freq/2, b.dur, 'sine', b.vol*0.85, b.when);       // sub octave for weight
+    audioNoise(Math.min(b.dur,.14), b.vol*0.4, 200, b.when);      // low thump transient
+  });
+}
+// Landing a Big One: a bigger, more triumphant fanfare than the unique/mythic
+// finds above, since this one was earned through the tap minigame rather than
+// a pure luck roll. Rising arpeggio into a wide landing chord, plus two
+// firework bursts instead of one.
+export function playBigOneWinSound(){
+  if(!ensureAudio()) return;
+  audioTone(392.00, .12, 'square', .11, 0);    // G4
+  audioTone(523.25, .12, 'square', .11, .11);  // C5
+  audioTone(659.25, .12, 'square', .11, .22);  // E5
+  audioTone(784.00, .16, 'square', .12, .33);  // G5 skip
+  audioTone(1046.50, .7, 'sine', .11, .48);    // C6 landing
+  audioTone(1318.51, .7, 'sine', .09, .48);    // E6 harmony
+  audioTone(1567.98, .7, 'sine', .08, .48);    // G6 harmony
+  audioNoise(.16, .03, 3200, .48);
+  setTimeout(playFireworkBurst, 500);
+  setTimeout(playFireworkBurst, 720);
+}
+// Per-circle feedback for the tap minigame -- a quick, light cue on every
+// individual tap or timeout, separate from the bigger win/lose fanfares
+// below (those play once, at the very end of the whole encounter).
+export function playBigOneHitSound(){
+  if(!ensureAudio()) return;
+  audioTone(880, .05, 'square', .09, 0);
+  audioTone(1174.66, .07, 'sine', .07, .04); // quick high skip, satisfying but not distracting
+}
+export function playBigOneMissTickSound(){
+  if(!ensureAudio()) return;
+  audioTone(196, .09, 'triangle', .05, 0); // short, low, deliberately unobtrusive
+}
+// A near-miss/failure cue for the Big One minigame: a short, deflating
+// descending pair of notes -- clearly not a reward sound, but not harsh
+// either, since the player did nothing "wrong" by missing.
+export function playBigOneMissSound(){
+  if(!ensureAudio()) return;
+  audioTone(330, .16, 'triangle', .08, 0);
+  audioTone(247, .28, 'triangle', .08, .12);
+}
 export function playClickSound(){ audioTone(440,0.035,'square',0.035,0); }
 export function playWaterSound(){ audioNoise(0.45,0.012,900,0); audioTone(150+Math.random()*35,0.18,'sine',0.018,0.05); }
 export function startWaterAmbience(){
