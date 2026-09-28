@@ -334,6 +334,12 @@
   .fx-catch.rating-high .fx-fish{ font-size:48px; animation:fishExplode .9s cubic-bezier(.16,1,.3,1) both; }
   .fx-catch.rating-max{ animation-duration:2.75s; font-size:25px; }
   .fx-catch.rating-max .fx-fish{ font-size:62px; animation:fishExplodeBig 1.05s cubic-bezier(.16,1,.3,1) both; }
+  /* Double catch (Trout set/Lost Lure): two fish lines stacked instead of the
+     usual single inline row, with a small label identifying what happened --
+     see showCatchFeedback()'s `bonus` param, game.js. */
+  .fx-catch.fx-double{ flex-direction:column; align-items:flex-start; gap:2px; left:-230px; }
+  .fx-catch.fx-double > div{ display:flex; align-items:center; gap:8px; }
+  .fx-double-label{ font-size:11px; color:var(--gold); letter-spacing:1px; }
   .fx-particle{ position:absolute; left:-205px; top:-50px; width:7px; height:7px; border-radius:50%; opacity:0; animation:particleBurst 1s ease-out forwards; }
   /* Level-up banner: position:fixed here measures from the *viewport*, not
      from .player-effects (its fixed-but-untransformed parent), so this

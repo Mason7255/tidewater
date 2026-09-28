@@ -246,6 +246,21 @@ export function totalClothingLuckBonus(){
   });
   return Math.min(total, 0.5); // safety ceiling, same spirit as the speed one
 }
+// Silver Ring (the Anchovy unique): stacks additively with the Anchovy
+// clothing set's own luckBonus, same relationship every other species'
+// unique has with its clothing set. Checks state.collectionLog directly
+// rather than pulling isTrinketOwned in from game.js -- same reasoning as
+// totalClothingLuckBonus above.
+export function totalTrinketLuckBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!(state.collectionLog && state.collectionLog[id])) return;
+    var item = trinketById(id);
+    if(item) total += item.luckBonus || 0;
+  });
+  return Math.min(total, 0.5);
+}
 // Perch set: a flat coin bonus applied on top of the existing quality-based
 // sell multiplier (see sellPrice() below) -- stacks additively across pieces.
 export function totalClothingSellBonus(){
@@ -290,9 +305,10 @@ export function rollQuality(){
   }
   // The Anchovy outfit's luck bonus works the same way -- lower float reads
   // as a better catch, so a full 5-piece set (10%) shifts the whole curve
-  // toward higher stars without touching the separate mythic-drop odds.
-  var clothingLuck = totalClothingLuckBonus();
-  if(clothingLuck > 0) fl *= (1 - clothingLuck);
+  // toward higher stars without touching the separate mythic-drop odds. The
+  // Silver Ring (Anchovy's unique) stacks the same way on top, at +15%.
+  var totalLuck = Math.min(0.9, totalClothingLuckBonus() + totalTrinketLuckBonus());
+  if(totalLuck > 0) fl *= (1 - totalLuck);
   return {stars:starsFromFloat(fl), float:fl};
 }
 function legacyFloatFromRating(rating){

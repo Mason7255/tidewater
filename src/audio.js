@@ -101,6 +101,20 @@ export function playCatchSound(stars){
   audioTone(root*1.5,.095,'sine',.075,.045);
   audioTone(root*2,.12,'sine',.035,.095);
 }
+// Double catch (Trout set/Lost Lure): needs to read as "two catches" by ear
+// alone, without looking at the screen -- so instead of one pickup pop
+// (playCatchSound above) this plays two in quick succession, panned by pitch
+// rather than stereo (this whole system is mono), then a short bright
+// flourish on top so it's still clearly its own distinct cue and not just a
+// hasty double-press of the normal catch sound.
+export function playDoubleCatchSound(){
+  if(!ensureAudio()) return;
+  audioTone(523.25,.05,'square',.09,0);
+  audioTone(523.25,.05,'square',.09,.10);
+  audioTone(659.25,.07,'sine',.075,.20);
+  audioTone(880.00,.10,'sine',.065,.28);
+  audioTone(1174.66,.16,'sine',.05,.36);
+}
 export function playFireworkBurst(){
   if(!ensureAudio()) return;
   var roots=[523,659,784,988][Math.floor(Math.random()*4)];

@@ -12,7 +12,7 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startBigOneSirenLoop, stopBigOneSirenLoop, startWaterAmbience } from './audio.js';
+import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneWinSound, playBuySound, playCatchSound, playDoubleCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startBigOneSirenLoop, stopBigOneSirenLoop, startWaterAmbience } from './audio.js';
 import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, goldenChestRewardItems, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
@@ -238,7 +238,14 @@ export function levelUnlockText(level){
   }
   return '';
 }
-export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
+// `bonus` (optional): {fish, stars, xp} for the Trout set/Lost Lure's second
+// fish on this cast -- when present, both catches are folded into this one
+// popup (a "DOUBLE CATCH!" label plus a line per fish) and their XP is
+// summed, instead of a second popup instantly overwriting the first one (see
+// the cast-completion handler below, which suppresses grantFish()'s own
+// showCatchFeedback call on both catches and calls this once, combined,
+// after it has both results).
+export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel, bonus){
   if(!animationsEnabled) return;
   // The popup's CSS animation is authored for a fixed 2.2-2.75s (see
   // .fx-catch in style.css), but at high fishing speed a cast can complete
@@ -278,28 +285,32 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
   anchor.style.top = anchorY + 'px';
   wrap.appendChild(anchor);
   wrap = anchor;
+  var burstStars = bonus ? Math.max(stars, bonus.stars) : stars;
   var catchFx = document.createElement('div');
-  var q = qualityInfo(stars);
-  var tier = stars >= 5 ? 'rating-max' : (stars >= 4 ? 'rating-high' : (stars >= 3 ? 'rating-mid' : ''));
-  catchFx.className = 'fx-item fx-catch ' + tier;
+  var q = qualityInfo(burstStars);
+  var tier = burstStars >= 5 ? 'rating-max' : (burstStars >= 4 ? 'rating-high' : (burstStars >= 3 ? 'rating-mid' : ''));
+  catchFx.className = 'fx-item fx-catch ' + tier + (bonus ? ' fx-double' : '');
   catchFx.style.color = q.color;
   catchFx.style.animationDuration = (lifeMs/1000)+'s';
-  catchFx.innerHTML = '<span class="fx-fish">'+fishDisplayEmoji(fish)+'</span><span>'+fish.name+' <span class="fx-rating">'+starsText(stars)+'</span></span>';
+  catchFx.innerHTML =
+    (bonus ? '<div class="fx-double-label">DOUBLE CATCH!</div>' : '') +
+    '<div><span class="fx-fish">'+fishDisplayEmoji(fish)+'</span><span>'+fish.name+' <span class="fx-rating">'+starsText(stars)+'</span></span></div>' +
+    (bonus ? '<div><span class="fx-fish">'+fishDisplayEmoji(bonus.fish)+'</span><span>'+bonus.fish.name+' <span class="fx-rating">'+starsText(bonus.stars)+'</span></span></div>' : '');
   wrap.appendChild(catchFx);
 
   var xpFx = document.createElement('div');
   xpFx.style.animationDuration = (xpLifeMs/1000)+'s';
   xpFx.className = 'fx-item fx-xp';
-  xpFx.textContent = '+'+xp+' XP';
+  xpFx.textContent = '+'+(xp + (bonus ? bonus.xp : 0))+' XP';
   wrap.appendChild(xpFx);
 
-  var burstCount = stars >= 4 ? 18 : (stars >= 3 ? 11 : (stars >= 2 ? 6 : 0));
+  var burstCount = burstStars >= 4 ? 18 : (burstStars >= 3 ? 11 : (burstStars >= 2 ? 6 : 0));
   for(var i=0;i<burstCount;i++){
     var p = document.createElement('span');
     p.className = 'fx-particle';
     p.style.background = (i%2===0 ? q.color : 'var(--gold)');
     var angle = (Math.PI*2*i/burstCount) + (Math.random()*.4-.2);
-    var distance = stars >= 4 ? 75+Math.random()*45 : 45+Math.random()*35;
+    var distance = burstStars >= 4 ? 75+Math.random()*45 : 45+Math.random()*35;
     p.style.setProperty('--dx', Math.cos(angle)*distance+'px');
     p.style.setProperty('--dy', Math.sin(angle)*distance+'px');
     p.style.animationDelay = (Math.random()*.12)+'s';
@@ -856,13 +867,20 @@ export function selectBackground(id){
   return true;
 }
 
-// isBonusCatch: true for the Trout set/Lost Lure's extra fish (see the
+// opts.isBonusCatch: true for the Trout set/Lost Lure's extra fish (see the
 // cast-completion handler below). Runs the exact same economy -- its own
 // quality roll, its own shot at collection log/mythic drops, its own XP and
 // coins -- but never opens the 4-5 star trophy-card prompt, so a bonus catch
 // can never stack a second decision card on top of the real catch's, or
 // pause auto-fishing the way a genuine trophy catch does.
-export function grantFish(fish, forcedQuality, isBonusCatch){
+// opts.suppressFeedback: skips this catch's own showCatchFeedback popup and
+// catch sound entirely. Used for BOTH catches on a double-catch cast, so the
+// cast-completion handler can combine them into one popup and one sound
+// after it has both results, instead of the second grantFish() call's own
+// popup instantly overwriting the first's.
+export function grantFish(fish, forcedQuality, opts){
+  var isBonusCatch = !!(opts && opts.isBonusCatch);
+  var suppressFeedback = !!(opts && opts.suppressFeedback);
   var beforeLevel = playerLevel();
   var quality = forcedQuality || rollQuality();
   var stars = quality.stars;
@@ -966,9 +984,11 @@ export function grantFish(fish, forcedQuality, isBonusCatch){
   if(challengesScreen && challengesScreen.classList.contains('active')) renderChallenges();
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
-  showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel);
+  if(!suppressFeedback){
+    showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel);
+    playCatchSound(stars);
+  }
   if(stars >= 4 && !isBonusCatch) showLegendaryFeedback(fish, stars, fl, newCatchId);
-  playCatchSound(stars);
   if(autoSoldPrice) showCoinGain(autoSoldPrice);
   if(leveledUp){
     playLevelSound(LEVEL_MILESTONES.indexOf(afterLevel) >= 0);
@@ -979,7 +999,7 @@ export function grantFish(fish, forcedQuality, isBonusCatch){
   } else if(stars >= 4 && isBonusCatch){
     setTimeout(function(){ showToast('That bonus '+fish.name+' was '+starsText(stars)+'! Kept in the bucket automatically.'); }, 700);
   }
-  return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained};
+  return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained, afterLevel: afterLevel, newCatchId: newCatchId};
 }
 // ---------- Recent catch feed ----------
 export function refreshRecentCatches(){
@@ -1427,29 +1447,32 @@ export function beginSingleCast(sessionId){
     awardedCastKey = '';
     castActive = false;
 
-    var result = grantFish(fish);
+    // Trout set/Lost Lure: a flat chance for THIS cast to land a second,
+    // fully independent fish riding along with the first -- see
+    // totalClothingDoubleCatchBonus()/totalTrinketDoubleCatchBonus() and the
+    // opts note on grantFish() above. Rolled BEFORE the guaranteed catch (it
+    // doesn't depend on that roll's result) so, when it hits, both catches'
+    // own showCatchFeedback/playCatchSound can be suppressed and combined
+    // into one popup + one distinct sound below instead of the second
+    // catch's popup instantly overwriting the first's. Independent of
+    // whatever the primary catch triggers further down (Big One, Shrimp
+    // Swarm, a 4-5 star trophy) -- those all key off `result`, the first
+    // fish only, so a bonus fish never affects that decision.
+    var doubleCatchChance = totalClothingDoubleCatchBonus() + totalTrinketDoubleCatchBonus();
+    var willDoubleCatch = doubleCatchChance > 0 && Math.random() < doubleCatchChance;
+
+    var result = grantFish(fish, null, willDoubleCatch ? {suppressFeedback:true} : null);
     animateFishToBucket(fish, result.stars);
     var q = qualityInfo(result.stars);
     autoFishStatusText.innerHTML = 'Caught a ' + fish.name + ' <span style="color:'+q.color+';">('+starsText(result.stars)+' · '+q.label+')</span>';
     autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+result.xpGained+' xp</span>';
     if(autoFishProgressFill) autoFishProgressFill.style.width = '100%';
 
-    // Trout set/Lost Lure: a flat chance for THIS cast to land a second,
-    // fully independent fish riding along with the first -- see
-    // totalClothingDoubleCatchBonus()/totalTrinketDoubleCatchBonus() and the
-    // isBonusCatch note on grantFish() above. Rolled once per cast, right
-    // after the guaranteed catch, and delayed slightly so its own popup
-    // plays after the first one instead of instantly overwriting it. Fires
-    // independently of whatever the primary catch triggers below (Big One,
-    // Shrimp Swarm, a 4-5 star trophy) -- those all key off `result`, the
-    // first fish only, so a bonus fish never affects that decision.
-    var doubleCatchChance = totalClothingDoubleCatchBonus() + totalTrinketDoubleCatchBonus();
-    if(doubleCatchChance > 0 && Math.random() < doubleCatchChance){
-      setTimeout(function(){
-        var bonusResult = grantFish(fish, null, true);
-        animateFishToBucket(fish, bonusResult.stars);
-        showToast('Double catch! A second ' + fish.name + ' was on the line too.');
-      }, 900);
+    if(willDoubleCatch){
+      var bonusResult = grantFish(fish, null, {isBonusCatch:true, suppressFeedback:true});
+      setTimeout(function(){ animateFishToBucket(fish, bonusResult.stars); }, 180);
+      showCatchFeedback(fish, result.stars, result.float, result.xpGained, result.leveledUp, result.afterLevel, {fish:fish, stars:bonusResult.stars, xp:bonusResult.xpGained});
+      playDoubleCatchSound();
     }
 
     // "Big One" roll: independent of the normal catch above (that fish is

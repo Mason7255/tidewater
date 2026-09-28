@@ -208,7 +208,11 @@ export function makeBaitCounts(){
 // (+25% fishing speed) and bass_lure (50% chance a cast uses no bait).
 export var COLLECTION_LOG_ITEMS = [
   {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad. Weirdly comfortable once it's broken in, though -- worn-in soles make casting a little quicker.", trinket:true, speedBonus:0.1},
-  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true, mythicLuckBonus:0.1},
+  // Used to carry mythicLuckBonus (a flat boost to unique/mythic drop chance)
+  // -- moved off to make room for a future clothing set to own that stat
+  // instead. Now stacks with the Anchovy outfit's own luckBonus, the same
+  // way every other species' unique stacks with its clothing set.
+  {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true, luckBonus:0.15},
   {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true, sellBonus:0.25},
   {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true, xpBonus:0.1},
   {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true, proficiencyBonus:1},
