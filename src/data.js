@@ -212,7 +212,7 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true, sellBonus:0.25},
   {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true, xpBonus:0.1},
   {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true, proficiencyBonus:1},
-  {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom.", trinket:true},
+  {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom -- something's still hooked to it.", trinket:true, doubleCatchBonus:0.2},
   {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open.', trinket:true},
   {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud.', trinket:true},
   {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat.', trinket:true, speedBonus:0.25},
@@ -278,17 +278,24 @@ export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 //     reduces the total catches needed to hit proficiency Lv 99 by
 //     x/(1+x), not by x itself (e.g. a 25% bonus cuts the 5,000-catch
 //     grind to 4,000 -- a real 20% fewer fish).
+//   doubleCatchBonus -- flat chance for a completed cast to land a second,
+//     fully independent fish on top of the first (totalClothingDoubleCatchBonus()/
+//     the cast-completion handler, game.js) -- own quality roll, own shot at
+//     collection log/mythic drops, own coins and XP, just presented lighter
+//     (no trophy-card prompt even at 4-5 stars, so it can never stack a
+//     second decision card on top of the real catch's).
 // Per-piece magnitude has climbed with each new set so far (2% luck, then 3%
-// sell/xp, then 5% proficiency) -- there's no rule that later sets have to
-// match earlier ones, they just need to feel like a meaningful step up. Add
-// a fish's id here (and a matching entry in CLOTHING_SETS) to extend
-// clothing to it.
-var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp'];
+// sell/xp, then 5% proficiency, then 3% double-catch) -- there's no rule that
+// later sets have to match earlier ones, they just need to feel like a
+// meaningful step up. Add a fish's id here (and a matching entry in
+// CLOTHING_SETS) to extend clothing to it.
+var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp', 'trout'];
 var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 var CLOTHING_LUCK_BONUS_PER_PIECE = 0.02; // 5 pieces => 10% total when a full set is equipped
 var CLOTHING_SELL_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
 var CLOTHING_XP_BONUS_PER_PIECE = 0.06; // 5 pieces => 30% total when a full set is equipped
 var CLOTHING_PROFICIENCY_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a full set is equipped
+var CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
 var CLOTHING_SETS = {
   shrimp: [
     // A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides
@@ -330,6 +337,13 @@ var CLOTHING_SETS = {
     {slot:'pants', name:'Carp-tail Waders', icon:'🐟', flavor:'Built for standing still a very long time.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
     {slot:'shoes', name:'Carp-fin Boots', icon:'🐟', flavor:'Planted. You are not going anywhere.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
     {slot:'gloves', name:'Carp-whisker Gloves', icon:'🐟', flavor:'You start noticing things about the water you never did before.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE}
+  ],
+  trout: [
+    {slot:'hat', name:'Trout-spotted Cap', icon:'🐟', flavor:'You swear you felt two takes on that last cast.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Trout-scale Vest', icon:'🐟', flavor:'Bright as the fish it came from. Draws a crowd.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
+    {slot:'pants', name:'Trout-tail Waders', icon:'🐟', flavor:'Built for holding steady in fast, cold water.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Trout-fin Boots', icon:'🐟', flavor:'Sure-footed on slick rock. You barely notice the current now.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Trout-gill Gloves', icon:'🐟', flavor:'A quicker sense for when a second fish is circling the line.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE}
   ]
 };
 FISH.forEach(function(fish){
@@ -452,6 +466,85 @@ export var SHRIMP_SWARM_BUFF = {
 // challenge family disappears permanently.
 var FISH_CATCH_THRESHOLDS = [5,10,25,50,100,250,500,1000,5000];
 var FISH_CHALLENGE_ICONS = {shrimp:'🦐',anchovies:'🐟',perch:'🐟',bluegill:'🐟',carp:'🐟',trout:'🐟',catfish:'🐟',crab:'🦀',lobster:'🦞',bass:'🐟',sturgeon:'🐟',koi:'🐠',squid:'🦑',octopus:'🐙',eel:'🐍',marlin:'🐟',dragonfish:'🐉',megalodon:'🦈',leviathan:'🐋'};
+
+// ---------------------------------------------------------------------------
+// Per-species challenge cosmetics -- procedurally generated pole/hat recolors,
+// one per FISH_CATCH_THRESHOLDS tier (9 tiers x 19 species = 171 items).
+// Odd tiers (1,3,5,7,9) reward a themed pole color, each rung richer than the
+// last; even tiers (2,4,6,8) reward a themed hat, cycling through the three
+// generic hat silhouettes pixelAvatarHTML() (render.js) already knows how to
+// draw from a name+color alone (Beanie/Bucket/generic) -- no new pixel art
+// needed. Every item here is `challengeReward:true` and `cost:0`: it's never
+// for sale and never shown in the Customize grid (see customizeSections(),
+// screens.js) until the matching Challenges tier is actually claimed, at
+// which point ownership is granted directly (see the challenge-claim handler,
+// screens.js) rather than through the shop or the achievement-claim flow the
+// Shrimp Head hat uses.
+// ---------------------------------------------------------------------------
+function hslToHex(h, s, l){
+  s = s/100; l = l/100;
+  var k = function(n){ return (n + h/30) % 12; };
+  var a = s * Math.min(l, 1-l);
+  var f = function(n){ return l - a * Math.max(-1, Math.min(k(n)-3, Math.min(9-k(n), 1))); };
+  var toHex = function(x){ var v = Math.round(x*255); return (v<16?'0':'') + v.toString(16); };
+  return '#' + toHex(f(0)) + toHex(f(8)) + toHex(f(4));
+}
+// Base hue per species, plus a couple of flags for species whose "personality"
+// shouldn't just be a hue: muddy bottom-feeders and armored ancients read as
+// desaturated/grayed (muted), the ornamental Koi reads as extra saturated
+// (vivid), and the two apex deep-water species read as darker overall (dark)
+// so they don't land on the same pastel range as everything else.
+var FISH_THEME = {
+  shrimp:{hue:350}, anchovies:{hue:205}, perch:{hue:95}, bluegill:{hue:185},
+  carp:{hue:42}, trout:{hue:165}, catfish:{hue:28,muted:true}, crab:{hue:14},
+  lobster:{hue:358}, bass:{hue:125}, sturgeon:{hue:212,muted:true}, koi:{hue:33,vivid:true},
+  squid:{hue:265}, octopus:{hue:312}, eel:{hue:150}, marlin:{hue:222},
+  dragonfish:{hue:340}, megalodon:{hue:208,muted:true,dark:true}, leviathan:{hue:258,dark:true}
+};
+var POLE_TIER_ADJ = ['Faded','Dull','Bright','Vivid','Radiant'];
+var HAT_TIER_ADJ = ['Modest','Sturdy','Polished','Prestige'];
+var HAT_TIER_SHAPE = ['Beanie','Bucket Hat','Topper','Beanie']; // 'Topper' avoids the
+// 'Beanie'/'Bucket' substrings on purpose, so it falls through to the third,
+// generic hat silhouette in pixelAvatarHTML() instead of reusing one of those two.
+function themeColor(theme, s, l){
+  var sat = s * (theme.muted ? 0.6 : theme.vivid ? 1.15 : 1);
+  sat = Math.max(10, Math.min(95, sat));
+  var light = l - (theme.dark ? 15 : 0);
+  light = Math.max(18, Math.min(88, light));
+  return hslToHex(theme.hue, sat, light);
+}
+export var CUSTOM_HAT_CHALLENGE_REWARDS = [];
+export var CUSTOM_POLE_CHALLENGE_REWARDS = [];
+var FISH_CHALLENGE_COSMETICS = {};
+FISH.forEach(function(fish){
+  var theme = FISH_THEME[fish.id] || {hue:200};
+  var icon = FISH_CHALLENGE_ICONS[fish.id] || '🐟';
+  var rewards = [];
+  for(var t=0; t<FISH_CATCH_THRESHOLDS.length; t++){
+    if(t % 2 === 0){
+      var rung = t/2; // 0..4
+      var s = 30 + rung*12.5, l = 78 - rung*9;
+      var id = 'pole_'+fish.id+'_t'+(t+1);
+      var name = POLE_TIER_ADJ[rung]+' '+fish.name+' Pole';
+      CUSTOM_POLE_CHALLENGE_REWARDS.push({id:id, name:name, color:themeColor(theme,s,l), cost:0, challengeReward:true});
+      rewards.push({kind:'pole', id:id, name:name});
+    } else {
+      var rung2 = (t-1)/2; // 0..3
+      var s2 = 40 + rung2*15, l2 = 65 - rung2*7;
+      var id2 = 'hat_'+fish.id+'_t'+(t+1);
+      var name2 = HAT_TIER_ADJ[rung2]+' '+fish.name+' '+HAT_TIER_SHAPE[rung2];
+      CUSTOM_HAT_CHALLENGE_REWARDS.push({id:id2, name:name2, color:themeColor(theme,s2,l2), icon:icon, cost:0, challengeReward:true});
+      rewards.push({kind:'hat', id:id2, name:name2});
+    }
+  }
+  FISH_CHALLENGE_COSMETICS[fish.id] = rewards;
+});
+// CUSTOM_HATS/CUSTOM_POLES (declared above, before FISH exists) are mutated in
+// place here rather than reassigned, so every existing import of them (a live
+// ES module binding to the same array) sees the extra 171 items too.
+Array.prototype.push.apply(CUSTOM_HATS, CUSTOM_HAT_CHALLENGE_REWARDS);
+Array.prototype.push.apply(CUSTOM_POLES, CUSTOM_POLE_CHALLENGE_REWARDS);
+
 export var CHALLENGES = [
   {id:'catch', name:'Catch fish', icon:'🐟', tiers:[10,100,500,1000,5000], rewards:[20,75,200,500,1500], progress:function(){ return totalFishCaught(); }},
   {id:'level', name:'Reach Fishing Lv', icon:'⭐', tiers:[10,25,50,75,100], rewards:[30,80,200,500,1200], progress:function(){ return playerLevel(); }},
@@ -467,7 +560,7 @@ export var CHALLENGES = [
   // goal shouldn't hinge on a catch that unlikely.
   {id:'log', name:'Find collection log items', icon:'📜', tiers:[1,5,15,30,60,113], rewards:[25,100,300,750,2000,5000], progress:function(){ return Object.keys(state.collectionLog||{}).length; }}
 ].concat(FISH.map(function(fish){
-  return {id:'fish_'+fish.id, name:'Catch '+fish.name, icon:FISH_CHALLENGE_ICONS[fish.id] || '🐟', tiers:FISH_CATCH_THRESHOLDS, rewards:[0,0,0,0,0,0,0,0,0], rewardType:'cosmetic', progress:function(){ return state.caught[fish.id] || 0; }};
+  return {id:'fish_'+fish.id, name:'Catch '+fish.name, icon:FISH_CHALLENGE_ICONS[fish.id] || '🐟', tiers:FISH_CATCH_THRESHOLDS, rewards:[0,0,0,0,0,0,0,0,0], rewardType:'cosmetic', cosmeticRewards:FISH_CHALLENGE_COSMETICS[fish.id], progress:function(){ return state.caught[fish.id] || 0; }};
 }));
 
 export var STARTING_BAIT = 5;

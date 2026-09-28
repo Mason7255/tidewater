@@ -557,6 +557,23 @@ export function totalClothingProficiencyBonus(){
   return Math.min(total, 3); // safety ceiling as more sets get added later
 }
 
+// Trout set: flat chance per completed cast to land a second, fully
+// independent fish on top of the one already caught -- see grantFish() and
+// its cast-completion caller below. Stacks additively with the Lost Lure
+// trinket's own doubleCatchBonus, same relationship every other clothing
+// bonus has with its species' unique item.
+export function totalClothingDoubleCatchBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.doubleCatchBonus || 0;
+  });
+  return Math.min(total, 0.9); // safety ceiling as more sets get added later
+}
+
 // Pack of Cigarettes: a temporary, timed version of a clothing/trinket
 // speed bonus -- see isBuffActive() in state.js. Stacks additively with
 // those the same way clothing and trinkets stack with each other.
@@ -624,6 +641,18 @@ export function totalTrinketXpBonus(){
     if(item) total += item.xpBonus || 0;
   });
   return Math.min(total, 0.75);
+}
+// Lost Lure (the Trout unique): stacks additively with the Trout clothing
+// set's own doubleCatchBonus -- see totalClothingDoubleCatchBonus() above.
+export function totalTrinketDoubleCatchBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.doubleCatchBonus || 0;
+  });
+  return Math.min(total, 0.9);
 }
 // Message in a Bottle (the Carp unique): doubles proficiency gains on its
 // own (a flat +100%), stacking additively with the Carp clothing set's own
@@ -827,7 +856,13 @@ export function selectBackground(id){
   return true;
 }
 
-export function grantFish(fish, forcedQuality){
+// isBonusCatch: true for the Trout set/Lost Lure's extra fish (see the
+// cast-completion handler below). Runs the exact same economy -- its own
+// quality roll, its own shot at collection log/mythic drops, its own XP and
+// coins -- but never opens the 4-5 star trophy-card prompt, so a bonus catch
+// can never stack a second decision card on top of the real catch's, or
+// pause auto-fishing the way a genuine trophy catch does.
+export function grantFish(fish, forcedQuality, isBonusCatch){
   var beforeLevel = playerLevel();
   var quality = forcedQuality || rollQuality();
   var stars = quality.stars;
@@ -932,15 +967,17 @@ export function grantFish(fish, forcedQuality){
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
   showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel);
-  if(stars >= 4) showLegendaryFeedback(fish, stars, fl, newCatchId);
+  if(stars >= 4 && !isBonusCatch) showLegendaryFeedback(fish, stars, fl, newCatchId);
   playCatchSound(stars);
   if(autoSoldPrice) showCoinGain(autoSoldPrice);
   if(leveledUp){
     playLevelSound(LEVEL_MILESTONES.indexOf(afterLevel) >= 0);
     showToast('Level up! Fishing level ' + afterLevel + '.');
   }
-  if(stars >= 4){
+  if(stars >= 4 && !isBonusCatch){
     setTimeout(function(){ showToast('Trophy catch! That '+fish.name+' was '+starsText(stars)+' with a '+fl.toFixed(6)+' float.'); }, 700);
+  } else if(stars >= 4 && isBonusCatch){
+    setTimeout(function(){ showToast('That bonus '+fish.name+' was '+starsText(stars)+'! Kept in the bucket automatically.'); }, 700);
   }
   return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained};
 }
@@ -1396,6 +1433,24 @@ export function beginSingleCast(sessionId){
     autoFishStatusText.innerHTML = 'Caught a ' + fish.name + ' <span style="color:'+q.color+';">('+starsText(result.stars)+' · '+q.label+')</span>';
     autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+result.xpGained+' xp</span>';
     if(autoFishProgressFill) autoFishProgressFill.style.width = '100%';
+
+    // Trout set/Lost Lure: a flat chance for THIS cast to land a second,
+    // fully independent fish riding along with the first -- see
+    // totalClothingDoubleCatchBonus()/totalTrinketDoubleCatchBonus() and the
+    // isBonusCatch note on grantFish() above. Rolled once per cast, right
+    // after the guaranteed catch, and delayed slightly so its own popup
+    // plays after the first one instead of instantly overwriting it. Fires
+    // independently of whatever the primary catch triggers below (Big One,
+    // Shrimp Swarm, a 4-5 star trophy) -- those all key off `result`, the
+    // first fish only, so a bonus fish never affects that decision.
+    var doubleCatchChance = totalClothingDoubleCatchBonus() + totalTrinketDoubleCatchBonus();
+    if(doubleCatchChance > 0 && Math.random() < doubleCatchChance){
+      setTimeout(function(){
+        var bonusResult = grantFish(fish, null, true);
+        animateFishToBucket(fish, bonusResult.stars);
+        showToast('Double catch! A second ' + fish.name + ' was on the line too.');
+      }, 900);
+    }
 
     // "Big One" roll: independent of the normal catch above (that fish is
     // already caught either way) -- only for a species whose Big One hasn't

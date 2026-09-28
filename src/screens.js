@@ -7,7 +7,7 @@
 
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
-import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, openGoldenChest, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
+import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, openGoldenChest, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingDoubleCatchBonus, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketDoubleCatchBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
 import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus, totalClothingSellBonus, totalTrinketSellBonus } from './state.js';
 
@@ -434,7 +434,7 @@ export function renderChallenges(){
     var row = document.createElement('div');
     row.className = 'challenge-row';
     var actionHtml = complete ? '<button class="btn-tiny gold challenge-claim" data-claim="'+c.id+'">'+(c.rewardType==='cosmetic'?'Claim reward':'Claim '+reward+' ⛃')+'</button>' : '<div class="challenge-meta" style="margin-top:0;">'+progress+' / '+target+'</div>';
-    var rewardText = c.rewardType === 'cosmetic' ? 'future cosmetic' : reward+' ⛃';
+    var rewardText = c.rewardType === 'cosmetic' ? (c.cosmeticRewards ? c.cosmeticRewards[tier].name : 'future cosmetic') : reward+' ⛃';
     row.innerHTML =
       '<div class="challenge-icon">'+c.icon+'</div>' +
       '<div class="challenge-body">' +
@@ -454,12 +454,14 @@ export function renderChallenges(){
       var tier = Math.max(0, Number(state.challengeTiers[c.id] || 0));
       if(tier >= c.tiers.length || c.progress() < c.tiers[tier]) return;
       var reward = c.rewards[tier];
+      var cosmeticReward = c.cosmeticRewards ? c.cosmeticRewards[tier] : null;
       state.challengeTiers[c.id] = tier + 1;
       delete state.claimedChallenges[c.id];
       if(c.rewardType !== 'cosmetic') state.coins += reward;
+      if(cosmeticReward) state.ownedCustomization[cosmeticReward.kind+'s'][cosmeticReward.id] = true;
       saveState(); updateHud();
       if(c.rewardType !== 'cosmetic') showCoinGain(reward);
-      showToast(c.rewardType === 'cosmetic' ? 'Challenge claimed! Cosmetic reward reserved for a future update.' : 'Challenge complete! +'+reward+' coins. Next tier unlocked.');
+      showToast(cosmeticReward ? 'Challenge complete! Unlocked "'+cosmeticReward.name+'" -- find it in Customize.' : 'Challenge complete! +'+reward+' coins. Next tier unlocked.');
       renderChallenges();
     });
   });
@@ -569,13 +571,22 @@ export function setShopTab(tab){
 // items per slot. Its own rail tab now, one category shown at a time, as a
 // dense grid of small square tiles (customizeTile()/renderCustomizeScreen()
 // below) so it stays legible as challenge-unlocked pieces get added.
+// A `challengeReward:true` item (the procedurally-generated per-species
+// challenge poles/hats -- see FISH_CHALLENGE_COSMETICS, data.js) is never for
+// sale and isn't tracked by the achievement-progress system below: it's
+// invisible in its Customize grid entirely until the matching Challenges tier
+// is claimed (challenge-claim handler below grants ownership directly), so it
+// can't just be clicked for free like a cost:0 shop item would be.
+function visibleCustomizeItems(items, owned){
+  return items.filter(function(item){ return !item.challengeReward || owned[item.id]; });
+}
 function customizeSections(){
   return [
     {kind:'skin', title:'SKIN TONES', items:CUSTOM_SKINS, owned:state.ownedCustomization.skins, selected:state.skin||'skin_light'},
     {kind:'hair', title:'HAIR', items:CUSTOM_HAIR, owned:state.ownedCustomization.hairs, selected:state.hair||'hair_brown'},
     {kind:'shirt', title:'SHIRTS', items:CUSTOM_SHIRTS, owned:state.ownedCustomization.shirts, selected:state.shirt||'shirt_coral'},
-    {kind:'hat', title:'HATS', items:CUSTOM_HATS, owned:state.ownedCustomization.hats, selected:state.hat||'hat_none'},
-    {kind:'pole', title:'POLES', items:CUSTOM_POLES, owned:state.ownedCustomization.poles, selected:state.poleColor||'pole_brown'}
+    {kind:'hat', title:'HATS', items:visibleCustomizeItems(CUSTOM_HATS, state.ownedCustomization.hats), owned:state.ownedCustomization.hats, selected:state.hat||'hat_none'},
+    {kind:'pole', title:'POLES', items:visibleCustomizeItems(CUSTOM_POLES, state.ownedCustomization.poles), owned:state.ownedCustomization.poles, selected:state.poleColor||'pole_brown'}
   ];
 }
 // A customization item is normally bought with coins (item.cost), but one
@@ -786,6 +797,7 @@ function clothingBonusText(item){
   if(item.sellBonus) return '+'+Math.round(item.sellBonus*100)+'% sell price.';
   if(item.xpBonus) return '+'+Math.round(item.xpBonus*100)+'% fishing XP.';
   if(item.proficiencyBonus) return '+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.';
+  if(item.doubleCatchBonus) return '+'+Math.round(item.doubleCatchBonus*100)+'% chance to catch 2 fish at once.';
   return 'No bonus yet.';
 }
 export function renderClothing(){
@@ -795,12 +807,14 @@ export function renderClothing(){
   var sellPct = Math.round(totalClothingSellBonus()*100);
   var xpPct = Math.round(totalClothingXpBonus()*100);
   var profPct = Math.round(totalClothingProficiencyBonus()*100);
+  var doubleCatchPct = Math.round(totalClothingDoubleCatchBonus()*100);
   var bonusBits = [];
   if(speedPct>0) bonusBits.push('+'+speedPct+'% fishing speed');
   if(luckPct>0) bonusBits.push('+'+luckPct+'% catch luck');
   if(sellPct>0) bonusBits.push('+'+sellPct+'% sell price');
   if(xpPct>0) bonusBits.push('+'+xpPct+'% fishing XP');
   if(profPct>0) bonusBits.push('+'+profPct+'% proficiency gain');
+  if(doubleCatchPct>0) bonusBits.push('+'+doubleCatchPct+'% chance to catch 2 fish at once');
   var summary=document.createElement('div'); summary.className='clothing-summary';
   summary.textContent = 'From equipped clothing: '+(bonusBits.length ? bonusBits.join(', ') : 'no bonuses yet');
   list.appendChild(summary);
@@ -856,6 +870,7 @@ export function renderTrinkets(){
   var sellPct = Math.round(totalTrinketSellBonus()*100);
   var xpPct = Math.round(totalTrinketXpBonus()*100);
   var profPct = Math.round(totalTrinketProficiencyBonus()*100);
+  var doubleCatchPct = Math.round(totalTrinketDoubleCatchBonus()*100);
   var forceLegendaryOn = false;
   trinketItems().forEach(function(item){
     if(!isTrinketEquipped(item.id)) return;
@@ -869,6 +884,7 @@ export function renderTrinkets(){
   if(sellPct > 0) bonusBits.push('+'+sellPct+'% sell price');
   if(xpPct > 0) bonusBits.push('+'+xpPct+'% fishing XP');
   if(profPct > 0) bonusBits.push('+'+profPct+'% proficiency gain');
+  if(doubleCatchPct > 0) bonusBits.push('+'+doubleCatchPct+'% chance to catch 2 fish at once');
   if(forceLegendaryOn) bonusBits.push('every catch guaranteed 5★');
   summary.textContent = equippedCount+' / '+TRINKET_SLOTS+' trinket slots used'+(bonusBits.length ? ' — '+bonusBits.join(', ') : '');
   list.appendChild(summary);
@@ -884,7 +900,8 @@ export function renderTrinkets(){
       : (item.sellBonus ? ('+'+Math.round(item.sellBonus*100)+'% sell price.')
       : (item.xpBonus ? ('+'+Math.round(item.xpBonus*100)+'% fishing XP.')
       : (item.proficiencyBonus ? ('+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.')
-      : 'No bonus yet.'))))));
+      : (item.doubleCatchBonus ? ('+'+Math.round(item.doubleCatchBonus*100)+'% chance to catch 2 fish at once.')
+      : 'No bonus yet.')))))));
     var discoveryText = item.chestReward
       ? 'Not discovered yet — a reward from opening a Golden Treasure Chest.'
       : (item.universal
