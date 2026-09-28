@@ -192,9 +192,9 @@ export function makeBaitCounts(){
 export var COLLECTION_LOG_ITEMS = [
   {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad. Weirdly comfortable once it's broken in, though -- worn-in soles make casting a little quicker.", trinket:true, speedBonus:0.1},
   {id:'silver_ring', fishId:'anchovies', name:'Silver Ring', icon:'💍', chance:0.0002, flavor:'Tarnished, but still shines under the dock lights.', trinket:true, mythicLuckBonus:0.1},
-  {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true},
-  {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true},
-  {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true},
+  {id:'tin_can', fishId:'perch', name:'Rusty Tin Can', icon:'🥫', chance:0.0002, flavor:"Someone's lunch, decades ago.", trinket:true, sellBonus:0.25},
+  {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true, xpBonus:0.1},
+  {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true, proficiencyBonus:1},
   {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom.", trinket:true},
   {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open.', trinket:true},
   {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud.', trinket:true},
@@ -232,15 +232,28 @@ export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 // Fish ids in this list get 5 named, wearable mythic pieces (one per slot in
 // CLOTHING_SLOTS) instead of the generic "Mythic 1-5" flavor items below.
 // Each piece carries its own bonus field, so different outfits can
-// specialize in different things: speedBonus stacks additively and reduces
-// cast time (see totalClothingSpeedBonus()/castDurationMs() in game.js);
-// luckBonus stacks additively and nudges the quality roll toward better
-// catches (see totalClothingLuckBonus()/rollQuality() in state.js). Add a
-// fish's id here (and a matching entry in CLOTHING_SETS) to extend clothing
-// to it.
-var CLOTHING_FISH_IDS = ['shrimp', 'anchovies'];
+// specialize in different things:
+//   speedBonus -- reduces cast time (totalClothingSpeedBonus()/castDurationMs(), game.js)
+//   luckBonus -- nudges the quality roll toward better catches (totalClothingLuckBonus()/rollQuality(), state.js)
+//   sellBonus -- increases coins earned per sale (totalClothingSellBonus()/sellPrice(), state.js)
+//   xpBonus -- increases fishing XP per catch (totalClothingXpBonus()/grantFish(), game.js)
+//   proficiencyBonus -- multiplies how much each catch counts toward that
+//     species' proficiency level (totalClothingProficiencyBonus()/grantFish(),
+//     game.js) -- a flat multiplier on the catch count, not on XP, so it
+//     reduces the total catches needed to hit proficiency Lv 99 by
+//     x/(1+x), not by x itself (e.g. a 25% bonus cuts the 5,000-catch
+//     grind to 4,000 -- a real 20% fewer fish).
+// Per-piece magnitude has climbed with each new set so far (2% luck, then 3%
+// sell/xp, then 5% proficiency) -- there's no rule that later sets have to
+// match earlier ones, they just need to feel like a meaningful step up. Add
+// a fish's id here (and a matching entry in CLOTHING_SETS) to extend
+// clothing to it.
+var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp'];
 var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 var CLOTHING_LUCK_BONUS_PER_PIECE = 0.02; // 5 pieces => 10% total when a full set is equipped
+var CLOTHING_SELL_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
+var CLOTHING_XP_BONUS_PER_PIECE = 0.06; // 5 pieces => 30% total when a full set is equipped
+var CLOTHING_PROFICIENCY_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a full set is equipped
 var CLOTHING_SETS = {
   shrimp: [
     {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
@@ -255,6 +268,27 @@ var CLOTHING_SETS = {
     {slot:'pants', name:'Anchovy-school Trousers', icon:'🐟', flavor:'A shimmer that seems to move on its own.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
     {slot:'shoes', name:'Anchovy-fin Loafers', icon:'🐟', flavor:'Every step smells faintly of the boardwalk.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
     {slot:'gloves', name:'Anchovy-oil Gloves', icon:'🐟', flavor:'Slippery. Lucky, apparently, not clumsy.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE}
+  ],
+  perch: [
+    {slot:'hat', name:'Perch-spine Cap', icon:'🐟', flavor:'Bristly. Looks worse than it feels.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Perch-scale Vest', icon:'🐟', flavor:'Catches the light like tiny coins.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
+    {slot:'pants', name:'Perch-fin Waders', icon:'🐟', flavor:'Stiff at first, then somehow perfect.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Perch-tail Boots', icon:'🐟', flavor:'A little spring in every step.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Perch-gill Gloves', icon:'🐟', flavor:'Haggling feels easier wearing these. Probably a coincidence.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE}
+  ],
+  bluegill: [
+    {slot:'hat', name:'Bluegill-scale Cap', icon:'🐟', flavor:'A faint blue sheen in the right light.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Bluegill-fin Vest', icon:'🐟', flavor:'Lighter than it looks. Easy to move in.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
+    {slot:'pants', name:'Bluegill-tail Waders', icon:'🐟', flavor:'Every cast feels like it teaches you something.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Bluegill-gill Boots', icon:'🐟', flavor:'You notice more standing in these. Hard to explain.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Bluegill-spine Gloves', icon:'🐟', flavor:'A sharper feel for the line than you had before.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE}
+  ],
+  carp: [
+    {slot:'hat', name:'Carp-scale Cap', icon:'🐟', flavor:'Heavy on the head. You get used to it.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Carp-hide Vest', icon:'🐟', flavor:'Thick and stubborn, like the fish it came from.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
+    {slot:'pants', name:'Carp-tail Waders', icon:'🐟', flavor:'Built for standing still a very long time.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Carp-fin Boots', icon:'🐟', flavor:'Planted. You are not going anywhere.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Carp-whisker Gloves', icon:'🐟', flavor:'You start noticing things about the water you never did before.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE}
   ]
 };
 FISH.forEach(function(fish){

@@ -493,6 +493,33 @@ export function totalClothingSpeedBonus(){
   });
   return Math.min(total, 0.9); // safety ceiling as more sets get added later
 }
+// Bluegill set: a flat bonus on fishing XP per catch (see grantFish() below).
+export function totalClothingXpBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.xpBonus || 0;
+  });
+  return Math.min(total, 0.75); // safety ceiling as more sets get added later
+}
+// Carp set: multiplies how much each catch counts toward that species'
+// proficiency level (see grantFish() below and proficiencyXp() in state.js).
+// A flat multiplier on the catch count, not on catches-needed, so it cuts
+// the total grind to Lv 99 by bonus/(1+bonus), not by bonus itself.
+export function totalClothingProficiencyBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.proficiencyBonus || 0;
+  });
+  return Math.min(total, 3); // safety ceiling as more sets get added later
+}
 
 // Pack of Cigarettes: a temporary, timed version of a clothing/trinket
 // speed bonus -- see isBuffActive() in state.js. Stacks additively with
@@ -549,6 +576,31 @@ export function totalTrinketSpeedBonus(){
     if(item) total += item.speedBonus || 0;
   });
   return Math.min(total, 0.9);
+}
+// Broken Watch (the Bluegill unique): stacks additively with the Bluegill
+// clothing set's own xpBonus, applied together in grantFish() below.
+export function totalTrinketXpBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.xpBonus || 0;
+  });
+  return Math.min(total, 0.75);
+}
+// Message in a Bottle (the Carp unique): doubles proficiency gains on its
+// own (a flat +100%), stacking additively with the Carp clothing set's own
+// proficiencyBonus, applied together in grantFish() below.
+export function totalTrinketProficiencyBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.proficiencyBonus || 0;
+  });
+  return Math.min(total, 3);
 }
 // Silver Ring (the Anchovy unique): a relative multiplier on the chance of
 // finding a fish-specific unique (logItemForFish) or mythic/outfit piece
@@ -725,11 +777,25 @@ export function grantFish(fish, forcedQuality){
   var quality = forcedQuality || rollQuality();
   var stars = quality.stars;
   var fl = quality.float;
-  state.xp += fish.xp;
+  // Bluegill set: flat XP bonus applied here, once, so every downstream use
+  // (record, feedback popup, HUD text, level-up check) sees the same final
+  // number rather than each recomputing it themselves.
+  var xpGained = Math.round(fish.xp * (1 + totalClothingXpBonus() + totalTrinketXpBonus()));
+  state.xp += xpGained;
+  // Carp set/Message in a Bottle: each catch counts as MORE than one catch
+  // toward THIS species' proficiency level, tracked separately from
+  // state.caught (the real, un-boosted catch count challenges/unlocks/the
+  // inventory chip rely on). The first time a species is touched here it's
+  // seeded from the real catch count so far, so older progress isn't lost
+  // or retroactively boosted -- only catches from here on get the bonus.
+  if(!state.proficiencies) state.proficiencies = {};
+  var profBonus = totalClothingProficiencyBonus() + totalTrinketProficiencyBonus();
+  var profBase = state.proficiencies[fish.id] != null ? state.proficiencies[fish.id] : (state.caught[fish.id]||0);
+  state.proficiencies[fish.id] = profBase + (1 + profBonus);
   state.caught[fish.id] = (state.caught[fish.id]||0) + 1;
   var newCatchId = nextCatchId();
   state.inventory.unshift({catchId: newCatchId, fishId: fish.id, stars: stars, float: fl, status:'kept'});
-  var catchRecord = {catchId:newCatchId, fishId:fish.id, stars:stars, float:fl, xp:fish.xp, timestamp:Date.now()};
+  var catchRecord = {catchId:newCatchId, fishId:fish.id, stars:stars, float:fl, xp:xpGained, timestamp:Date.now()};
   state.catchHistory.unshift(catchRecord);
   // Cap the log so long/idle play sessions don't grow this array (and the
   // localStorage payload it's saved in) without bound. Record-holder
@@ -807,7 +873,7 @@ export function grantFish(fish, forcedQuality){
   if(challengesScreen && challengesScreen.classList.contains('active')) renderChallenges();
   var afterLevel = playerLevel();
   var leveledUp = afterLevel > beforeLevel;
-  showCatchFeedback(fish, stars, fl, fish.xp, leveledUp, afterLevel);
+  showCatchFeedback(fish, stars, fl, xpGained, leveledUp, afterLevel);
   if(stars >= 4) showLegendaryFeedback(fish, stars, fl, newCatchId);
   playCatchSound(stars);
   if(autoSoldPrice) showCoinGain(autoSoldPrice);
@@ -818,7 +884,7 @@ export function grantFish(fish, forcedQuality){
   if(stars >= 4){
     setTimeout(function(){ showToast('Trophy catch! That '+fish.name+' was '+starsText(stars)+' with a '+fl.toFixed(6)+' float.'); }, 700);
   }
-  return {leveledUp: leveledUp, stars: stars, float: fl};
+  return {leveledUp: leveledUp, stars: stars, float: fl, xpGained: xpGained};
 }
 // ---------- Recent catch feed ----------
 export function refreshRecentCatches(){
@@ -944,13 +1010,19 @@ export function inspectInventoryEntry(entry){
   var f=fishById(entry.fishId);
   if(!f) return;
   var stars=starsForEntry(entry), q=qualityInfo(stars), price=sellPrice(f,entry), fl=floatForEntry(entry);
+  // Inventory entries don't store the xp that catch actually awarded (only
+  // catchHistory does), so look it up there for an accurate number -- falls
+  // back to the fish's base xp for older saves / entries with no matching
+  // history record.
+  var histRec = state.catchHistory.find(function(h){ return h.catchId === entry.catchId; });
+  var xpShown = histRec && histRec.xp != null ? histRec.xp : f.xp;
   var body=document.getElementById('catchInspectBody');
   body.innerHTML='<div class="inspect-fish" style="color:'+q.color+';">'+fishDisplayEmoji(f)+'</div>'+
     '<h3>'+f.name+'</h3>'+
     '<div class="inspect-stars" style="color:'+q.color+';">'+starsText(stars)+'</div>'+
     '<div class="inspect-rating" style="color:'+q.color+';">'+q.label+'</div>'+
     '<div class="inspect-float">Float: '+fl.toFixed(4)+' · Rarity: '+floatRarityText(entry)+'</div>'+
-    '<div class="inspect-stats"><span>Fishing XP <b>+'+f.xp+'</b></span><span>Value <b>'+price+' ⛃</b></span></div>'+
+    '<div class="inspect-stats"><span>Fishing XP <b>+'+xpShown+'</b></span><span>Value <b>'+price+' ⛃</b></span></div>'+
     '<div class="inspect-actions">'+
     '<button class="btn-secondary" id="inspectCloseBtn">Close</button>'+
     (entry.status==='kept' ? '<button class="btn-secondary" id="inspectTrophyBtn">🏆 Trophy</button>' : '')+
@@ -1264,7 +1336,7 @@ export function beginSingleCast(sessionId){
     animateFishToBucket(fish, result.stars);
     var q = qualityInfo(result.stars);
     autoFishStatusText.innerHTML = 'Caught a ' + fish.name + ' <span style="color:'+q.color+';">('+starsText(result.stars)+' · '+q.label+')</span>';
-    autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+fish.xp+' xp</span>';
+    autoFishCountText.innerHTML = '<span style="color:'+q.color+';">+'+result.xpGained+' xp</span>';
     if(autoFishProgressFill) autoFishProgressFill.style.width = '100%';
 
     // "Big One" roll: independent of the normal catch above (that fish is

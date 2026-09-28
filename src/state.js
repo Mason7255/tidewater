@@ -246,6 +246,34 @@ export function totalClothingLuckBonus(){
   });
   return Math.min(total, 0.5); // safety ceiling, same spirit as the speed one
 }
+// Perch set: a flat coin bonus applied on top of the existing quality-based
+// sell multiplier (see sellPrice() below) -- stacks additively across pieces.
+export function totalClothingSellBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !(state.collectionLog && state.collectionLog[id])) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.sellBonus || 0;
+  });
+  return Math.min(total, 0.75); // safety ceiling as more sets get added later
+}
+// Rusty Tin Can (the Perch unique): stacks additively with the Perch
+// clothing set's own sellBonus, same relationship as speed bonuses stacking
+// across clothing/trinkets/consumables (see castDurationMs(), game.js).
+// Checks state.collectionLog directly rather than pulling isTrinketOwned in
+// from game.js -- same reasoning as totalClothingLuckBonus above.
+export function totalTrinketSellBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!(state.collectionLog && state.collectionLog[id])) return;
+    var item = trinketById(id);
+    if(item) total += item.sellBonus || 0;
+  });
+  return Math.min(total, 0.75);
+}
 export function rollQuality(){
   // Dev Luck Tablet: skips the roll entirely rather than just nudging it --
   // this is a 1-in-10,000,000 catch, it's allowed to be absolute.
@@ -357,6 +385,7 @@ export function sellPrice(fish, entry){
   var fl = floatForEntry(entry);
   var quality = Math.max(0, Math.min(1, 1-fl));
   var mult = 1 + SELL_QUALITY_BONUS * Math.pow(quality, RATING_EXPONENT);
+  mult *= 1 + totalClothingSellBonus() + totalTrinketSellBonus();
   return Math.max(1, Math.round(fish.coins * mult));
 }
 
@@ -380,7 +409,16 @@ export function buildProfXpTable(){
     profXpTable[level] = level === 1 ? 0 : Math.floor(40 * Math.pow(level-1, 1.75));
   }
 }
-export function proficiencyXp(fishId){ return Number(state.caught[fishId] || 0); }
+// state.proficiencies tracks proficiency progress separately from
+// state.caught (the real, un-boosted lifetime catch count that challenges,
+// background unlocks and the inventory chip all rely on) -- the Carp set
+// and Message in a Bottle let a catch count as MORE than one toward THIS
+// number, without inflating the real catch count anywhere else. Falls back
+// to state.caught for a species that hasn't been caught since this existed.
+export function proficiencyXp(fishId){
+  var boosted = state.proficiencies && state.proficiencies[fishId];
+  return Number(boosted != null ? boosted : (state.caught[fishId] || 0));
+}
 export function proficiencyLevel(fishId){
   var catches = proficiencyXp(fishId);
   for(var i=PROFICIENCY_CATCH_MILESTONES.length-1;i>=0;i--){

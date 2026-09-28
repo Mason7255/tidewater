@@ -7,9 +7,9 @@
 
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
-import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
+import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
 import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
-import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus } from './state.js';
+import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus, totalClothingSellBonus, totalTrinketSellBonus } from './state.js';
 
 document.getElementById('sceneInventoryBtn').addEventListener('click', function(){ renderInventoryList(); showScreen('screen-inventory'); });
 document.getElementById('backFromInventory').addEventListener('click', function(){ showScreen('screen-dock'); });
@@ -151,7 +151,7 @@ export function inspectRecordCatch(catchId){
     '<div class="inspect-stars" style="color:'+q.color+';">'+starsText(stars)+'</div>'+
     '<div class="inspect-rating" style="color:'+q.color+';">'+q.label+'</div>'+
     '<div class="inspect-float">Float: '+fl.toFixed(4)+' · Rarity: '+floatRarityText(rec)+'</div>'+
-    '<div class="inspect-stats"><span>Fishing XP <b>+'+f.xp+'</b></span><span>Record catch</span></div>'+
+    '<div class="inspect-stats"><span>Fishing XP <b>+'+(rec.xp != null ? rec.xp : f.xp)+'</b></span><span>Record catch</span></div>'+
     '<button class="btn-secondary" id="inspectRecordCloseBtn" style="width:100%;">Close</button>';
   document.getElementById('catchInspect').classList.add('active');
   document.getElementById('inspectRecordCloseBtn').addEventListener('click',closeCatchInspect);
@@ -409,7 +409,7 @@ export function setEquipmentTab(tab){
   document.getElementById('equipmentIntroText').textContent = activeEquipmentTab==='gear'
     ? 'Only gear you own is shown here. Equip a setup to target its species.'
     : activeEquipmentTab==='clothing'
-    ? 'Wearable pieces found as rare mythic catches. Each piece boosts fishing speed — a full 5-piece set from one species is a 20% boost.'
+    ? 'Wearable pieces found as rare mythic catches. Each species has its own full 5-piece set with its own specialty — fishing speed, catch luck, sell price, fishing XP, or proficiency gain.'
     : 'Rare curiosities found alongside a catch (1 in 5,000). Equip up to '+TRINKET_SLOTS+' at once — most are just keepsakes for now, but a few carry real bonuses.';
   if(activeEquipmentTab==='clothing') renderClothing();
   else if(activeEquipmentTab==='trinkets') renderTrinkets();
@@ -600,15 +600,24 @@ export function renderOwnedEquipment(){
 function clothingBonusText(item){
   if(item.speedBonus) return '+'+Math.round(item.speedBonus*100)+'% fishing speed.';
   if(item.luckBonus) return '+'+Math.round(item.luckBonus*100)+'% catch luck.';
+  if(item.sellBonus) return '+'+Math.round(item.sellBonus*100)+'% sell price.';
+  if(item.xpBonus) return '+'+Math.round(item.xpBonus*100)+'% fishing XP.';
+  if(item.proficiencyBonus) return '+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.';
   return 'No bonus yet.';
 }
 export function renderClothing(){
   var list=document.getElementById('clothingList'); list.innerHTML='';
   var speedPct = Math.round(totalClothingSpeedBonus()*100);
   var luckPct = Math.round(totalClothingLuckBonus()*100);
+  var sellPct = Math.round(totalClothingSellBonus()*100);
+  var xpPct = Math.round(totalClothingXpBonus()*100);
+  var profPct = Math.round(totalClothingProficiencyBonus()*100);
   var bonusBits = [];
   if(speedPct>0) bonusBits.push('+'+speedPct+'% fishing speed');
   if(luckPct>0) bonusBits.push('+'+luckPct+'% catch luck');
+  if(sellPct>0) bonusBits.push('+'+sellPct+'% sell price');
+  if(xpPct>0) bonusBits.push('+'+xpPct+'% fishing XP');
+  if(profPct>0) bonusBits.push('+'+profPct+'% proficiency gain');
   var summary=document.createElement('div'); summary.className='clothing-summary';
   summary.textContent = 'From equipped clothing: '+(bonusBits.length ? bonusBits.join(', ') : 'no bonuses yet');
   list.appendChild(summary);
@@ -659,6 +668,9 @@ export function renderTrinkets(){
   var speedPct = Math.round(totalTrinketSpeedBonus()*100);
   var noBaitPct = Math.round(trinketNoBaitChance()*100);
   var mythicLuckPct = Math.round(totalMythicLuckBonus()*100);
+  var sellPct = Math.round(totalTrinketSellBonus()*100);
+  var xpPct = Math.round(totalTrinketXpBonus()*100);
+  var profPct = Math.round(totalTrinketProficiencyBonus()*100);
   var forceLegendaryOn = false;
   trinketItems().forEach(function(item){
     if(!isTrinketEquipped(item.id)) return;
@@ -669,6 +681,9 @@ export function renderTrinkets(){
   if(speedPct > 0) bonusBits.push('+'+speedPct+'% fishing speed');
   if(noBaitPct > 0) bonusBits.push(noBaitPct+'% chance to use no bait');
   if(mythicLuckPct > 0) bonusBits.push('+'+mythicLuckPct+'% chance to find mythics/uniques');
+  if(sellPct > 0) bonusBits.push('+'+sellPct+'% sell price');
+  if(xpPct > 0) bonusBits.push('+'+xpPct+'% fishing XP');
+  if(profPct > 0) bonusBits.push('+'+profPct+'% proficiency gain');
   if(forceLegendaryOn) bonusBits.push('every catch guaranteed 5★');
   summary.textContent = equippedCount+' / '+TRINKET_SLOTS+' trinket slots used'+(bonusBits.length ? ' — '+bonusBits.join(', ') : '');
   list.appendChild(summary);
@@ -681,7 +696,10 @@ export function renderTrinkets(){
       : (item.speedBonus ? ('+'+Math.round(item.speedBonus*100)+'% fishing speed.')
       : (item.noBaitChance ? (Math.round(item.noBaitChance*100)+'% chance a cast uses no bait.')
       : (item.mythicLuckBonus ? ('+'+Math.round(item.mythicLuckBonus*100)+'% chance to find mythic and unique items (any species).')
-      : 'No bonus yet.')));
+      : (item.sellBonus ? ('+'+Math.round(item.sellBonus*100)+'% sell price.')
+      : (item.xpBonus ? ('+'+Math.round(item.xpBonus*100)+'% fishing XP.')
+      : (item.proficiencyBonus ? ('+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.')
+      : 'No bonus yet.'))))));
     var discoveryText = item.universal
       ? 'Not discovered yet — an almost impossible 1-in-10,000,000 find from any catch, of any species.'
       : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.');
