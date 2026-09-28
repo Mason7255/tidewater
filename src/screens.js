@@ -7,7 +7,7 @@
 
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
-import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
+import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, openGoldenChest, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
 import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus, totalClothingSellBonus, totalTrinketSellBonus } from './state.js';
 
@@ -264,34 +264,157 @@ export function renderCollection(){
 }
 
 // ---------- Collection log ----------
+// Reorganized into one card per species (plus a "Universal" card for items
+// not tied to any one fish) instead of a single flat list of every item --
+// with 19 species x up to 7 items each, the old flat grid only got longer
+// as more mythics/uniques/Big Ones got added. Tapping a card opens
+// #speciesLogModal with that species' own items, reusing the same per-item
+// tile look the flat grid used to show directly.
 document.getElementById('viewLogBtn').addEventListener('click', function(){ renderLog(); showScreen('screen-log'); });
 document.getElementById('backFromLog').addEventListener('click', function(){ showScreen('screen-dock'); });
+
+function logItemsForFishId(fishId){
+  return COLLECTION_LOG_ITEMS.filter(function(item){ return item.fishId === fishId; });
+}
+function logOwnedCount(items){
+  return items.filter(function(item){ return !!state.collectionLog[item.id]; }).length;
+}
+// Builds one item tile exactly as the old flat renderLog() did -- reused
+// both for a species' items and for the Universal card's items.
+function renderLogItemTile(item){
+  var owned = state.collectionLog[item.id] || 0;
+  var fish = fishById(item.fishId);
+  // Odds text used to be hardcoded to "1/5000" for every item, which was
+  // only right by coincidence for uniques (chance 0.0002 = 1/5000) and
+  // wrong for mythics (chance 0.001 = 1/1000). Compute it from the item's
+  // real chance instead so it's correct for both. Big One entries aren't a
+  // luck roll -- they're won through the tap minigame, so there's no drop
+  // chance to compute or show.
+  var oddsText = item.bigOne ? 'Big One minigame' : (item.chestReward ? 'Chest reward' : ('1/'+Math.round(1/item.chance).toLocaleString()+' drop'));
+  var sourceText = item.chestReward ? 'From the Golden Treasure Chest' : (item.universal ? 'From any catch' : ('From ' + (fish ? fish.name : '?')));
+  var subtext = owned ? '×'+owned+' · '+oddsText : (sourceText+' · '+oddsText);
+  var tile = document.createElement('div');
+  tile.className = 'fish-tile' + (owned ? '' : ' locked') + (item.bigOne ? ' fish-tile-bigone' : '');
+  tile.innerHTML =
+    '<div class="dot" style="background:rgba(217,164,65,0.16); color:var(--gold);">'+(owned ? item.icon : '?')+'</div>' +
+    '<div class="fname">'+(owned ? item.name : '???')+'</div>' +
+    '<div class="fcount">'+subtext+'</div>';
+  return tile;
+}
 
 export function renderLog(){
   var grid = document.getElementById('logGrid');
   grid.innerHTML = '';
-  COLLECTION_LOG_ITEMS.forEach(function(item){
-    var owned = state.collectionLog[item.id] || 0;
-    var fish = fishById(item.fishId);
+  var lvl = playerLevel();
+
+  FISH.forEach(function(f){
+    var items = logItemsForFishId(f.id);
+    if(!items.length) return;
+    var owned = logOwnedCount(items);
+    var complete = owned === items.length;
+    var locked = f.level > lvl;
     var tile = document.createElement('div');
-    tile.className = 'fish-tile' + (owned ? '' : ' locked');
-    // Odds text used to be hardcoded to "1/5000" for every item, which was
-    // only right by coincidence for uniques (chance 0.0002 = 1/5000) and
-    // wrong for mythics (chance 0.001 = 1/1000). Compute it from the item's
-    // real chance instead so it's correct for both.
-    // Big One entries aren't a luck roll -- they're won through the tap
-    // minigame, so there's no drop chance to compute or show.
-    var oddsText = item.bigOne ? 'Big One minigame' : ('1/'+Math.round(1/item.chance).toLocaleString()+' drop');
-    var sourceText = item.universal ? 'From any catch' : ('From ' + (fish ? fish.name : '?'));
-    var subtext = owned ? '×'+owned+' · '+oddsText : (sourceText+' · '+oddsText);
-    tile.className += item.bigOne ? ' fish-tile-bigone' : '';
+    tile.className = 'fish-tile log-species' + (locked ? ' locked' : '') + (complete ? ' log-complete' : '');
+    tile.setAttribute('data-log-species', f.id);
     tile.innerHTML =
-      '<div class="dot" style="background:rgba(217,164,65,0.16); color:var(--gold);">'+(owned ? item.icon : '?')+'</div>' +
-      '<div class="fname">'+(owned ? item.name : '???')+'</div>' +
-      '<div class="fcount">'+subtext+'</div>';
+      '<div class="dot">'+(locked ? '🔒' : fishDisplayEmoji(f))+'</div>' +
+      '<div class="fname">'+f.name+'</div>' +
+      '<div class="fcount">'+owned+' / '+items.length+' found</div>';
     grid.appendChild(tile);
   });
+
+  var universalItems = COLLECTION_LOG_ITEMS.filter(function(item){ return item.universal && !item.chestGroup; });
+  if(universalItems.length){
+    var uOwned = logOwnedCount(universalItems);
+    var uComplete = uOwned === universalItems.length;
+    var uTile = document.createElement('div');
+    uTile.className = 'fish-tile log-species' + (uComplete ? ' log-complete' : '');
+    uTile.setAttribute('data-log-species', 'universal');
+    uTile.innerHTML =
+      '<div class="dot">🌐</div>' +
+      '<div class="fname">Universal</div>' +
+      '<div class="fcount">'+uOwned+' / '+universalItems.length+' found</div>';
+    grid.appendChild(uTile);
+  }
+
+  // Golden Treasure Chest: its own card, separate from Universal, grouping
+  // the chest itself with all 10 possible rewards (5 clothing + 5 trinket --
+  // see the chestGroup items in data.js). "Found" here counts owning the
+  // chest at least once, or any reward pulled from opening one.
+  var chestItems = COLLECTION_LOG_ITEMS.filter(function(item){ return !!item.chestGroup; });
+  if(chestItems.length){
+    var cOwned = logOwnedCount(chestItems);
+    var cComplete = cOwned === chestItems.length;
+    var cTile = document.createElement('div');
+    cTile.className = 'fish-tile log-species' + (cComplete ? ' log-complete' : '');
+    cTile.setAttribute('data-log-species', 'golden_chest_group');
+    cTile.innerHTML =
+      '<div class="dot">🎁</div>' +
+      '<div class="fname">Golden Chest</div>' +
+      '<div class="fcount">'+cOwned+' / '+chestItems.length+' found</div>';
+    grid.appendChild(cTile);
+  }
+
+  Array.prototype.forEach.call(grid.querySelectorAll('[data-log-species]'), function(tile){
+    tile.addEventListener('click', function(){ openSpeciesLog(tile.getAttribute('data-log-species')); });
+  });
 }
+
+function openSpeciesLog(key){
+  var items, title, icon;
+  var isChestGroup = key === 'golden_chest_group';
+  if(key === 'universal'){
+    items = COLLECTION_LOG_ITEMS.filter(function(item){ return item.universal && !item.chestGroup; });
+    title = 'Universal';
+    icon = '🌐';
+  } else if(isChestGroup){
+    items = COLLECTION_LOG_ITEMS.filter(function(item){ return !!item.chestGroup; });
+    title = 'Golden Treasure Chest';
+    icon = '🎁';
+  } else {
+    var fish = fishById(key);
+    items = logItemsForFishId(key);
+    title = fish ? fish.name : '?';
+    icon = fish ? fishDisplayEmoji(fish) : '🐟';
+  }
+  var owned = logOwnedCount(items);
+  var complete = items.length > 0 && owned === items.length;
+  var unopened = isChestGroup ? (state.collectionLog.golden_chest || 0) : 0;
+  var body = document.getElementById('speciesLogModalBody');
+  body.innerHTML =
+    '<div class="species-log-head">' +
+      '<div class="dot">'+icon+'</div>' +
+      '<h3>'+title+'</h3>' +
+    '</div>' +
+    '<p class="species-log-progress'+(complete?' complete':'')+'">'+owned+' / '+items.length+' found'+(complete?' — complete!':'')+'</p>' +
+    (isChestGroup ?
+      '<p class="chest-open-sub">'+(unopened > 0
+        ? 'You have '+unopened+' unopened '+(unopened===1?'chest':'chests')+'.'
+        : 'Any catch has a 1 in 10,000 chance to turn up a chest.')+'</p>' +
+      '<button class="btn-primary chest-open-btn" id="openChestBtn" type="button"'+(unopened>0?'':' disabled')+'>'+
+        'Open Chest'+(unopened>0?' ('+unopened+')':'')+'</button>'
+      : '') +
+    '<div class="species-log-grid" id="speciesLogGrid"></div>';
+  var itemsGrid = document.getElementById('speciesLogGrid');
+  items.forEach(function(item){ itemsGrid.appendChild(renderLogItemTile(item)); });
+  if(isChestGroup){
+    var openBtn = document.getElementById('openChestBtn');
+    if(openBtn){
+      openBtn.addEventListener('click', function(){
+        var reward = openGoldenChest();
+        if(reward){
+          openSpeciesLog('golden_chest_group');
+          renderLog();
+        }
+      });
+    }
+  }
+  document.getElementById('speciesLogModal').classList.add('active');
+}
+function closeSpeciesLog(){
+  document.getElementById('speciesLogModal').classList.remove('active');
+}
+document.getElementById('speciesLogModalClose').addEventListener('click', closeSpeciesLog);
 
 // ---------- Challenges ----------
 document.getElementById('viewChallengesBtn').addEventListener('click', function(){ renderChallenges(); showScreen('screen-challenges'); });
@@ -446,9 +569,9 @@ export function customizationCard(kind, item, owned, selected){
   if(kind==='hair') preview='<div class="pixel-mini"><div class="pixel-hair" style="background:'+item.color+';"></div></div>';
   if(kind==='shirt') preview='<div class="custom-shirt-preview" style="background:'+item.color+';"></div>';
   if(kind==='hat') preview='<div class="custom-hat-preview" style="background:'+item.color+';"></div>';
-  if(kind==='pole') preview='<div class="custom-pole-preview" style="background:'+item.color+';"></div>';
+  if(kind==='pole') preview='<div class="custom-pole-preview'+(item.celestial?' pole-celestial':'')+'"'+(item.celestial?'':' style="background:'+item.color+';"')+'></div>';
   var card=document.createElement('div'); card.className='custom-card'+(selected?' selected-item':'');
-  var action=selected ? 'Selected' : (owned ? 'Equip' : item.cost+' ⛃');
+  var action=selected ? 'Selected' : (owned ? 'Equip' : item.cost.toLocaleString()+' ⛃');
   var disabled=!owned && state.coins<item.cost;
   card.innerHTML='<div class="custom-preview">'+preview+'</div><div class="custom-item-title">'+item.name+'</div><div class="custom-item-desc">'+(selected?'Currently equipped.':(owned?'Owned and ready to wear.':'Add it to your angler customization collection.'))+'</div><button class="shop-buy" '+(disabled||selected?'disabled':'')+'>'+action+'</button>';
   card.querySelector('button').addEventListener('click', function(){
@@ -639,7 +762,9 @@ export function renderClothing(){
           '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
           '<div class="shop-desc">'+(owned
             ? (clothingBonusText(item)+' '+item.flavor)
-            : ('Not discovered yet — this is a rare mythic catch from '+(fish?fish.name:'this species')+'.'))+'</div>'+
+            : (item.chestReward
+              ? 'Not discovered yet — a reward from opening a Golden Treasure Chest.'
+              : ('Not discovered yet — this is a rare mythic catch from '+(fish?fish.name:'this species')+'.')))+'</div>'+
         '</div>'+
         (owned ? (equipped
           ? '<button class="shop-buy" data-unequip-clothing="'+slot+'">Unequip</button>'
@@ -700,9 +825,11 @@ export function renderTrinkets(){
       : (item.xpBonus ? ('+'+Math.round(item.xpBonus*100)+'% fishing XP.')
       : (item.proficiencyBonus ? ('+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.')
       : 'No bonus yet.'))))));
-    var discoveryText = item.universal
-      ? 'Not discovered yet — an almost impossible 1-in-10,000,000 find from any catch, of any species.'
-      : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.');
+    var discoveryText = item.chestReward
+      ? 'Not discovered yet — a reward from opening a Golden Treasure Chest.'
+      : (item.universal
+        ? 'Not discovered yet — an almost impossible 1-in-10,000,000 find from any catch, of any species.'
+        : ('Not discovered yet — a rare 1-in-5,000 find from '+(fish?fish.name:'this species')+'.'));
     var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
     card.innerHTML =
       '<div class="shop-icon">'+(owned?item.icon:'❔')+'</div>'+

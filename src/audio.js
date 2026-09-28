@@ -27,6 +27,25 @@ export function ensureAudio(){
   if(audioCtx.state === 'suspended') audioCtx.resume();
   return audioCtx;
 }
+// Browsers only actually start an AudioContext after a genuine user gesture.
+// ensureAudio() above tries to unlock it lazily, on whatever click happens
+// to trigger the first sound -- but if THAT particular click doesn't satisfy
+// the browser's autoplay gate, the context stays silently suspended until
+// something else calls ensureAudio() again. That's why toggling the Sound
+// checkbox in Options "fixes" it: that click calls ensureAudio() directly.
+// Rather than rely on players finding that workaround, listen for the very
+// first interaction anywhere on the page and try to unlock audio right then
+// -- self-removing once the context is actually running, harmless to retry
+// otherwise.
+function tryUnlockAudioOnFirstInteraction(){
+  var ctx = ensureAudio();
+  if(ctx && ctx.state === 'running'){
+    document.removeEventListener('pointerdown', tryUnlockAudioOnFirstInteraction, true);
+    document.removeEventListener('keydown', tryUnlockAudioOnFirstInteraction, true);
+  }
+}
+document.addEventListener('pointerdown', tryUnlockAudioOnFirstInteraction, true);
+document.addEventListener('keydown', tryUnlockAudioOnFirstInteraction, true);
 export function audioTone(freq, duration, type, volume, when){
   var ctx=ensureAudio(); if(!ctx || !audioMaster) return;
   var t=ctx.currentTime+(when||0), osc=ctx.createOscillator(), gain=ctx.createGain();
@@ -180,23 +199,30 @@ export function playMythicFoundSound(isNew){
   audioTone(440.00, .36, 'square', .10, .30);  // A5 landing
   audioNoise(.10, .02, 2800, .30);
 }
-// "Big One" encounter sting: three low, weighted hits that build in
-// intensity -- "dun... dun... DUNNN" -- to announce a rare catch is on the
-// line, right before the Press Start banner appears. Same building blocks as
-// everything else here (audioTone + audioNoise), just pitched low and paced
-// slow so it reads as a tension cue rather than a pickup/reward sound.
+// "Big One" encounter alarm -- a Yankee Stadium two-strike-siren style wail:
+// one smooth continuous rise in pitch (not an up-down swoop) with a touch of
+// mechanical rasp (a quiet sawtooth layer under the sine) and a thin band of
+// motor-like noise, cutting off at the end of the ramp rather than fading
+// back down. BIG_ONE_WAIL_MS/BIG_ONE_WAIL_GAP_MS below control the loop
+// timing -- startBigOneSirenLoop()/stopBigOneSirenLoop() repeat this back to
+// back continuously until the player presses Start.
+var BIG_ONE_WAIL_MS = 850;
+var BIG_ONE_WAIL_GAP_MS = 350;
 export function playBigOneSound(){
   if(!ensureAudio()) return;
-  var beats = [
-    {freq:110,   dur:.30, vol:.15, when:0},    // A2 -- "dun"
-    {freq:110,   dur:.32, vol:.19, when:.46},  // A2, a touch louder -- "dun"
-    {freq:87.31, dur:.85, vol:.25, when:.94}   // F2, lower + longer -- "DUNNN"
-  ];
-  beats.forEach(function(b){
-    audioTone(b.freq, b.dur, 'square', b.vol, b.when);
-    audioTone(b.freq/2, b.dur, 'sine', b.vol*0.85, b.when);       // sub octave for weight
-    audioNoise(Math.min(b.dur,.14), b.vol*0.4, 200, b.when);      // low thump transient
-  });
+  var dur = BIG_ONE_WAIL_MS/1000;
+  audioChirp(320, 760, dur, 'sine', 0.18, 0);
+  audioChirp(320, 760, dur, 'sawtooth', 0.05, 0); // quiet rasp layer
+  audioNoise(dur, 0.045, 2400, 0); // thin motor-like texture
+}
+var bigOneSirenTimer = null;
+export function startBigOneSirenLoop(){
+  stopBigOneSirenLoop();
+  playBigOneSound();
+  bigOneSirenTimer = setInterval(playBigOneSound, BIG_ONE_WAIL_MS + BIG_ONE_WAIL_GAP_MS);
+}
+export function stopBigOneSirenLoop(){
+  if(bigOneSirenTimer){ clearInterval(bigOneSirenTimer); bigOneSirenTimer = null; }
 }
 // Landing a Big One: a bigger, more triumphant fanfare than the unique/mythic
 // finds above, since this one was earned through the tap minigame rather than

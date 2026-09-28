@@ -74,7 +74,15 @@ export var CUSTOM_POLES = [
   {id:'pole_purple', name:'Deep Purple Pole', color:'#8058A8', cost:600},
   {id:'pole_white', name:'Moonlit Pole', color:'#D7DDE4', cost:850},
   {id:'pole_gold', name:'Gilded Pole', color:'#D9A441', cost:1200},
-  {id:'pole_obsidian', name:'Obsidian Pole', color:'#252B33', cost:1800}
+  {id:'pole_obsidian', name:'Obsidian Pole', color:'#252B33', cost:1800},
+  // The prestige cosmetic: a flat hex can't carry the shifting iridescent
+  // look on its own, so `color` here is just a safe fallback (in case
+  // anything ever reads it expecting a plain color) -- the real look is a
+  // slow-cycling black/purple/blue/teal gradient driven entirely by CSS
+  // (.pole-celestial, style.css), applied instead of the inline color
+  // whenever celestial:true (see customizationCard(), screens.js, and
+  // renderPlayer(), render.js).
+  {id:'pole_celestial', name:'Celestial Rod', color:'#1a0e3a', cost:16500000, celestial:true}
 ];
 
 // Fish no longer have permanent species rarities. Each individual catch is graded by stars.
@@ -205,7 +213,7 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.', trinket:true},
   {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.', trinket:true},
   {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.', trinket:true},
-  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true},
+  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true, speedBonus:0.25},
   {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
   {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
   {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true},
@@ -215,7 +223,25 @@ export var COLLECTION_LOG_ITEMS = [
   // per-species lookup; universalLogItems() below is how grantFish() finds
   // it instead. While equipped, every catch is forced to 5-star/Legendary
   // (see the forceLegendary check in rollQuality(), state.js).
-  {id:'dev_luck', fishId:null, universal:true, name:'Dev Luck Tablet', icon:'📱', chance:0.0000001, trinket:true, forceLegendary:true, flavor:'1 in 10,000,000. How did you catch this?'}
+  {id:'dev_luck', fishId:null, universal:true, name:'Dev Luck Tablet', icon:'📱', chance:0.0000001, trinket:true, forceLegendary:true, flavor:'1 in 10,000,000. How did you catch this?'},
+  // The Golden Treasure Chest: rolls like Dev Luck above (universal, any
+  // catch), but doesn't grant a bonus by itself -- owning it lets the player
+  // open it from the Collection Log for a chance at one of the 10
+  // chestReward items below (see openGoldenChest(), game.js). chestGroup
+  // marks the chest and every one of its rewards so the Log UI can bucket
+  // them together as their own card instead of "Universal".
+  {id:'golden_chest', fishId:null, universal:true, chestGroup:true, rareLabel:'Treasure found! ', name:'Golden Treasure Chest', icon:'🎁', chance:0.0001, flavor:'Heavier than it should be, and it will not stop rattling. Open it from the Collection Log for a shot at what is inside.'},
+  // Five of the chest's ten possible rewards are trinkets (the other five
+  // are clothing pieces -- see the MYTHIC_LOG_ITEMS push below, since
+  // clothingItems() only reads from that array). chestReward:true marks all
+  // ten as "not directly catchable" -- no chance field, and skipped by the
+  // normal per-catch/universal rolls entirely. No gameplay bonuses on any of
+  // them yet; they're cosmetic flexes for now, easy to add bonuses to later.
+  {id:'golden_rod', fishId:null, chestGroup:true, chestReward:true, trinket:true, name:'Gilded Rod', icon:'🎣', flavor:'Too fancy to actually cast with. You cast with it anyway.'},
+  {id:'golden_net', fishId:null, chestGroup:true, chestReward:true, trinket:true, name:'Gilded Net', icon:'🥅', flavor:'Gold-plated mesh. Somehow still catches fish.'},
+  {id:'golden_watch', fishId:null, chestGroup:true, chestReward:true, trinket:true, name:'Gold Watch', icon:'⌚', flavor:'Keeps perfect time. You still lose track of the hours out here.'},
+  {id:'golden_necklace', fishId:null, chestGroup:true, chestReward:true, trinket:true, name:'Gold Necklace', icon:'📿', flavor:'A little much for the dock, honestly. Wear it anyway.'},
+  {id:'golden_underwear', fishId:null, chestGroup:true, chestReward:true, trinket:true, name:'Golden Underwear', icon:'🩲', flavor:'Somehow the rarest thing in the whole chest. No further questions.'}
 ];
 // Trinkets aren't tied to a body slot like clothing — any owned trinket can
 // fill any of the equipped slots, up to TRINKET_SLOTS at once.
@@ -302,7 +328,28 @@ FISH.forEach(function(fish){
     MYTHIC_LOG_ITEMS.push({id:'mythic_'+fish.id+'_'+mythicNumber, fishId:fish.id, name:'Mythic '+mythicNumber, icon:'✦', chance:0.001, mythic:true, flavor:'A mythic form of '+fish.name+'. Its true name is still waiting to be written.'});
   }
 });
+// The other five Golden Treasure Chest rewards (see COLLECTION_LOG_ITEMS
+// above) are clothing pieces -- pushed in here, not the main array literal,
+// since clothingItems()/clothingItemsForSlot() only read from
+// MYTHIC_LOG_ITEMS. fishId:null and no chance field (chestReward:true marks
+// them as chest-only, never a direct catch roll); slot/clothing:true is all
+// equipClothing()/totalClothingXxxBonus() actually key off, so a null fishId
+// works exactly like any other clothing piece once owned.
+[
+  {slot:'hat', id:'golden_helmet', name:'Gilded Helmet', icon:'🪖', flavor:'Polished to a mirror shine. Mostly ceremonial.'},
+  {slot:'shirt', id:'golden_shirt', name:'Gilded Shirt', icon:'👕', flavor:'Not exactly practical for wading, but it sure looks the part.'},
+  {slot:'pants', id:'golden_legs', name:'Gilded Legs', icon:'👖', flavor:'Stiff, heavy, and worth more than the boat.'},
+  {slot:'shoes', id:'golden_shoes', name:'Gilded Shoes', icon:'👞', flavor:'Squeaky clean. They will not stay that way at the dock.'},
+  {slot:'gloves', id:'golden_gloves', name:'Gilded Gloves', icon:'🧤', flavor:'Every knot you tie in these feels a little more official.'}
+].forEach(function(piece){
+  MYTHIC_LOG_ITEMS.push(Object.assign({fishId:null, chestGroup:true, chestReward:true, clothing:true}, piece));
+});
 COLLECTION_LOG_ITEMS = COLLECTION_LOG_ITEMS.concat(MYTHIC_LOG_ITEMS);
+// All 10 chest rewards together, in a fixed order (Open Chest UI + odds
+// display), now that both halves (trinkets in the main array, clothing in
+// MYTHIC_LOG_ITEMS) have been merged into COLLECTION_LOG_ITEMS above.
+export var GOLDEN_CHEST_REWARD_IDS = ['golden_helmet','golden_shirt','golden_legs','golden_gloves','golden_shoes','golden_rod','golden_net','golden_watch','golden_necklace','golden_underwear'];
+export function goldenChestRewardItems(){ return GOLDEN_CHEST_REWARD_IDS.map(function(id){ return logItemById(id); }); }
 export function logItemById(id){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){ if(COLLECTION_LOG_ITEMS[i].id===id) return COLLECTION_LOG_ITEMS[i]; } return null; }
 export function logItemForFish(fishId){ for(var i=0;i<COLLECTION_LOG_ITEMS.length;i++){ if(COLLECTION_LOG_ITEMS[i].fishId===fishId) return COLLECTION_LOG_ITEMS[i]; } return null; }
 export function mythicLogItemsForFish(fishId){ return MYTHIC_LOG_ITEMS.filter(function(item){ return item.fishId===fishId; }); }

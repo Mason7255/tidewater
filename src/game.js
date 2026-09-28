@@ -12,8 +12,8 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
+import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startBigOneSirenLoop, stopBigOneSirenLoop, startWaterAmbience } from './audio.js';
+import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, goldenChestRewardItems, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -367,6 +367,42 @@ export function showMegaRareFeedback(item, fish, isNew){
   }
   reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
   if(item.mythic) playMythicFoundSound(isNew); else playUniqueFoundSound(isNew);
+}
+// Golden Treasure Chest: opened manually from the Collection Log (see
+// openSpeciesLog()/the chest card in screens.js), not rolled per-catch like
+// everything else above. Consumes one owned chest (state.collectionLog.golden_chest)
+// for one uniform-random pick among the 10 GOLDEN_CHEST_REWARD_IDS (dupes
+// allowed, same as any other collectible). Returns the reward item, or null
+// if the player has no unopened chests.
+export function openGoldenChest(){
+  var owned = (state.collectionLog && state.collectionLog.golden_chest) || 0;
+  if(owned <= 0) return null;
+  state.collectionLog.golden_chest = owned - 1;
+  var rewards = goldenChestRewardItems();
+  var reward = rewards[Math.floor(Math.random() * rewards.length)];
+  var isNewReward = !state.collectionLog[reward.id];
+  state.collectionLog[reward.id] = (state.collectionLog[reward.id] || 0) + 1;
+  saveState();
+  showChestRewardFeedback(reward, isNewReward);
+  return reward;
+}
+function showChestRewardFeedback(item, isNew){
+  var layer = rareLayer();
+  var reveal = document.createElement('div');
+  reveal.className = 'mega-rare-reveal rare-persist';
+  reveal.innerHTML = '<div class="mega-rare-spark">✦</div><div class="mega-rare-kicker">CHEST OPENED</div><div class="mega-rare-icon">'+item.icon+'</div><div class="mega-rare-name">'+item.name+'</div><div class="mega-rare-source">'+(isNew ? 'A new item for the collection.' : 'Another one for the pile.')+'</div>'+
+    '<div class="rare-actions"><button class="btn-secondary rare-close" type="button">Nice!</button></div>';
+  layer.appendChild(reveal);
+  for(var i=0;i<28;i++){
+    var particle = document.createElement('span');
+    particle.className = 'mega-rare-particle';
+    particle.style.setProperty('--mega-x', Math.cos(Math.PI*2*i/28)*(90+Math.random()*150)+'px');
+    particle.style.setProperty('--mega-y', Math.sin(Math.PI*2*i/28)*(70+Math.random()*120)+'px');
+    particle.style.animationDelay = (Math.random()*.18)+'s';
+    reveal.appendChild(particle);
+  }
+  reveal.querySelector('.rare-close').addEventListener('click', function(){ dismissRareCard(reveal); });
+  playUniqueFoundSound(isNew);
 }
 export function showLegendaryFeedback(fish, stars, float, catchId){
   var layer = rareLayer();
@@ -866,7 +902,7 @@ export function grantFish(fish, forcedQuality){
     state.collectionLog[uItem.id] = (state.collectionLog[uItem.id]||0) + 1;
     setTimeout(function(){
       showMegaRareFeedback(uItem, fish, isNewUniversal);
-      showToast((isNewUniversal ? 'Impossible find! ' : 'Found another ') + uItem.icon + ' ' + uItem.name + '.');
+      showToast((isNewUniversal ? (uItem.rareLabel || 'Impossible find! ') : 'Found another ') + uItem.icon + ' ' + uItem.name + '.');
     }, isNewUniversal ? 1400 : 1100);
   });
 
@@ -1569,7 +1605,7 @@ export function startBigOneMinigame(fish, onComplete){
 // meantime. `fish` is a FISH entry, `onStart` fires once the player presses
 // the button (this is where the minigame will eventually take over).
 export function showBigOneBanner(fish, onStart){
-  playBigOneSound();
+  startBigOneSirenLoop();
   var overlay = document.getElementById('bigOneBanner');
   if(!overlay){
     overlay = document.createElement('div');
@@ -1589,6 +1625,7 @@ export function showBigOneBanner(fish, onStart){
   requestAnimationFrame(function(){ overlay.classList.add('active'); });
   var btn = overlay.querySelector('#bigOneStartBtn');
   btn.addEventListener('click', function(){
+    stopBigOneSirenLoop();
     overlay.classList.remove('active');
     setTimeout(function(){ if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 260);
     if(typeof onStart === 'function') onStart();
@@ -1608,15 +1645,39 @@ var swarmActive = false;
 
 function beginShrimpSwarmEncounter(alsoTrophy){
   swarmActive = true;
-  playShrimpSwarmStartSound();
-  showToast('A shrimp swarm scatters across the water!');
-  setTimeout(function(){
+  showShrimpSwarmBanner(function(){
     startShrimpSwarmMinigame(function(success, taggedCount){
       swarmActive = false;
       resolveShrimpSwarmOutcome(success, taggedCount);
       if(!alsoTrophy) startAutoFish();
     });
-  }, 700);
+  });
+}
+// A brief (3s), auto-dismissing announcement -- unlike Big One's banner this
+// never waits for a click, since Swarm is meant to stay low-friction. Fades
+// in, holds for the full duration, fades out, then calls onDone.
+function showShrimpSwarmBanner(onDone){
+  playShrimpSwarmStartSound();
+  var overlay = document.getElementById('swarmBanner');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'swarmBanner';
+    overlay.className = 'swarm-banner';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML =
+    '<div class="swarm-banner-card">'+
+      '<h2 class="swarm-banner-title">🦐 Shrimp Frenzy! 🦐</h2>'+
+      '<p class="swarm-banner-sub">Tap the shrimp before time runs out!</p>'+
+    '</div>';
+  requestAnimationFrame(function(){ overlay.classList.add('active'); });
+  setTimeout(function(){
+    overlay.classList.remove('active');
+    setTimeout(function(){
+      if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if(typeof onDone === 'function') onDone();
+    }, 260);
+  }, 3000);
 }
 
 function resolveShrimpSwarmOutcome(success, taggedCount){

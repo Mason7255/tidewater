@@ -116,7 +116,9 @@ export function renderPlayer(container, withGear){
     var eq = equipmentById(state.gear) || equipmentById('shrimp_net');
     var kind = eq.type === 'net' ? 'gear-net' : (eq.type === 'trap' ? 'gear-trap' : 'gear-pole');
     var gearIcon = eq.type === 'biggame' ? '⚓' : '';
-    gearHtml = '<div class="player-rod '+kind+'" id="playerRod" title="'+eq.name+'" style="background:'+pole.color+';">'+
+    var poleClass = pole.celestial ? ' pole-celestial' : '';
+    var poleStyleAttr = pole.celestial ? '' : (' style="background:'+pole.color+';"');
+    gearHtml = '<div class="player-rod '+kind+poleClass+'" id="playerRod" title="'+eq.name+'"'+poleStyleAttr+'>'+
       (eq.type === 'net' ? '<div class="net-hoop"></div>' : '')+
       (eq.type === 'trap' ? '<div class="trap-box"></div>' : '')+
       (gearIcon ? '<div class="gear-mini-icon">'+gearIcon+'</div>' : '')+

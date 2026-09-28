@@ -400,6 +400,16 @@
   @media (prefers-reduced-motion: reduce){ .bigone-circle{ animation:none; } }
   .fish-tile-bigone:not(.locked){ border-color:rgba(217,164,65,.55); box-shadow:0 0 0 1px rgba(217,164,65,.25) inset; }
   /* ---------- Shrimp Swarm minigame ---------- */
+  /* A brief, auto-dismissing announcement (no button, no waiting for input --
+     Swarm is common/low-stakes, so it shouldn't need a click-through the way
+     Big One's banner does). Fades in, holds, fades out on its own. */
+  .swarm-banner{ position:fixed; inset:0; z-index:2147483647; display:flex; align-items:center; justify-content:center; background:rgba(3,9,15,.5); opacity:0; pointer-events:none; transition:opacity .25s ease; }
+  .swarm-banner.active{ opacity:1; }
+  .swarm-banner-card{ text-align:center; padding:0 24px; }
+  .swarm-banner-title{ font-family:'Fraunces',serif; font-weight:900; font-size:clamp(24px,6.5vw,42px); line-height:1.1; color:var(--gold); text-shadow:3px 3px 0 #000,-1px -1px 0 #000; margin:0 0 10px; animation:swarmBannerPop .4s ease-out; }
+  .swarm-banner-sub{ color:var(--cream,#f4ead9); font-size:15px; margin:0; text-shadow:1px 1px 0 #000; }
+  @keyframes swarmBannerPop{ 0%{transform:scale(0.7); opacity:0;} 60%{transform:scale(1.08); opacity:1;} 100%{transform:scale(1); opacity:1;} }
+  @media (prefers-reduced-motion: reduce){ .swarm-banner-title{ animation:none; } }
   .swarm-game-overlay{ position:fixed; inset:0; z-index:2147483647; background:rgba(3,9,15,.5); touch-action:none; overflow:hidden; }
   .swarm-game-hud{ position:fixed; top:calc(14px + env(safe-area-inset-top,0px)); left:50%; transform:translateX(-50%); display:flex; gap:8px; }
   .swarm-hud-pill{ font-family:'Press Start 2P',monospace; font-size:10.5px; color:var(--cream,#f4ead9); text-shadow:2px 2px 0 #000; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.2); border-radius:8px; padding:7px 11px; white-space:nowrap; }
@@ -500,6 +510,30 @@
   .fish-tile .dot{ width:38px; height:38px; border-radius:50%; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; }
   .fish-tile .fname{ font-size:11.5px; font-weight:700; line-height:1.25; }
   .fish-tile .fcount{ font-size:10.5px; color:var(--silver); margin-top:2px; }
+  /* Collection log species cards are clickable (open that species' detail
+     modal) and get a green border/glow once every item for that species has
+     been found -- the "you've 100%'d it" signal the flat item grid never had
+     a way to show. */
+  .fish-tile.log-species{ cursor:pointer; transition:border-color .15s ease, box-shadow .15s ease, transform .1s ease; }
+  .fish-tile.log-species:active{ transform:scale(0.97); }
+  .fish-tile.log-complete{ border-color:#4CD787; box-shadow:0 0 0 1px rgba(76,215,135,.35) inset, 0 0 14px rgba(76,215,135,.35); }
+  .fish-tile.log-complete .fcount{ color:#8CF0B4; font-weight:700; }
+  /* Per-species detail modal -- wider than the default catch-inspect card
+     (which is sized for a single catch, not a grid of several items) and
+     scrolls internally so a full 7-item species still fits on a phone. */
+  .species-log-card{ width:min(560px, calc(100vw - 32px)); max-height:min(600px, calc(100vh - 64px)); overflow-y:auto; text-align:left; }
+  .species-log-close{ margin-bottom:6px; }
+  .species-log-head{ display:flex; align-items:center; gap:12px; margin-bottom:6px; }
+  .species-log-head .dot{ width:44px; height:44px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:22px; background:rgba(255,255,255,0.06); flex:0 0 auto; }
+  .species-log-head h3{ margin:0; font-family:'Fraunces',serif; font-size:20px; }
+  .species-log-progress{ color:var(--silver); font-size:12.5px; margin:0 0 14px; }
+  .species-log-progress.complete{ color:#8CF0B4; font-weight:700; }
+  .species-log-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(96px,1fr)); gap:10px; }
+  /* Open Chest button inside the Golden Treasure Chest card's modal --
+     reuses .btn-primary's look but scoped down to fit inline in the modal
+     instead of a full-width menu button. */
+  .chest-open-sub{ color:var(--silver); font-size:12.5px; margin:-8px 0 12px; }
+  .chest-open-btn.btn-primary{ margin-top:0; margin-bottom:14px; padding:12px; font-size:14px; }
 
   .nav-back{ background:none; color:var(--silver); font-weight:700; font-size:14px; display:flex; align-items:center; gap:6px; margin-bottom:14px; padding:4px 0; }
 
@@ -514,6 +548,20 @@
   .custom-hat-preview{ width:52px; height:24px; border-radius:26px 26px 8px 8px; position:relative; box-shadow:inset 0 -5px rgba(0,0,0,.12); }
   .custom-hat-preview:after{ content:''; position:absolute; width:66px; height:8px; left:50%; bottom:-4px; transform:translateX(-50%); border-radius:99px; background:inherit; filter:brightness(.86); }
   .custom-pole-preview{ width:6px; height:56px; border-radius:99px; transform:rotate(28deg); box-shadow:2px 0 0 rgba(255,255,255,.22); }
+  /* Celestial Rod: a slow-cycling black/purple/blue/teal gradient standing
+     in for a Dark Matter-style shifting camo. Applied on top of both the
+     shop preview swatch and the actual equipped rod (.player-rod) -- see
+     customizationCard(), screens.js, and renderPlayer(), render.js, which
+     both skip the normal inline background:color for this one item so this
+     class's animated gradient shows through instead. */
+  .pole-celestial{
+    background:linear-gradient(160deg,#05030a 0%,#1a0e3a 12%,#3a0f5c 24%,#0e2a6e 38%,#1b7a8c 50%,#6a1f8c 62%,#0a1440 76%,#2a0a4a 88%,#05030a 100%);
+    background-size:100% 320%;
+    box-shadow:2px 0 0 rgba(255,255,255,.22), 0 0 10px rgba(120,60,200,.5);
+    animation:celestialShift 4.5s ease-in-out infinite;
+  }
+  @keyframes celestialShift{ 0%{ background-position:0% 0%; } 50%{ background-position:0% 100%; } 100%{ background-position:0% 0%; } }
+  @media (prefers-reduced-motion: reduce){ .pole-celestial{ animation:none; background-position:0% 40%; } }
   .pixel-mini{ width:64px; height:64px; display:flex; align-items:center; justify-content:center; background:#172535; image-rendering:pixelated; }
   .pixel-face{ width:24px; height:24px; border:4px solid #25201c; image-rendering:pixelated; }
   .pixel-hair{ width:32px; height:12px; border:4px solid #25201c; image-rendering:pixelated; }

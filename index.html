@@ -209,9 +209,17 @@
   <section class="screen panel" id="screen-log">
     <button class="nav-back" id="backFromLog">✕ Close</button>
     <h2>Collection log</h2>
-    <p class="intro-text" style="margin-bottom:0;">Rare curiosities pulled up while fishing, each tied to a species.</p>
+    <p class="intro-text" style="margin-bottom:0;">Rare curiosities pulled up while fishing, grouped by species. Tap a species to see what it's hiding — a green border means you've found everything it has.</p>
     <div class="collection-grid" id="logGrid"></div>
   </section>
+
+  <!-- COLLECTION LOG: per-species detail -->
+  <div class="catch-inspect" id="speciesLogModal">
+    <div class="catch-inspect-card species-log-card">
+      <button class="nav-back species-log-close" id="speciesLogModalClose">✕ Close</button>
+      <div id="speciesLogModalBody"></div>
+    </div>
+  </div>
 
   <!-- CHALLENGES -->
   <section class="screen panel" id="screen-challenges">
