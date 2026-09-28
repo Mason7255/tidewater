@@ -475,6 +475,12 @@
   .shop-buy:disabled{ background:rgba(255,255,255,0.08); color:rgba(233,228,211,0.4); }
   .shop-section-title{ font-size:12px; font-weight:800; letter-spacing:0.3px; color:var(--silver); margin:22px 0 10px; }
   .shop-section-title:first-child{ margin-top:0; }
+  /* Bulk-buy quantity picker above the bait list (x1/x5/x10/x25/Max) -- same
+     idea as the shop's category tabs, just smaller since it's a sub-control. */
+  .bait-qty-row{ display:flex; gap:6px; margin:0 0 12px; flex-wrap:wrap; }
+  .bait-qty-btn{ padding:6px 12px; border-radius:8px; border:1px solid rgba(255,255,255,0.14); background:rgba(255,255,255,0.06); color:var(--silver); font-size:12px; font-weight:700; cursor:pointer; transition:background .12s ease,color .12s ease; }
+  .bait-qty-btn:hover{ background:rgba(255,255,255,0.12); }
+  .bait-qty-btn.active{ background:var(--gold); color:#1a1408; border-color:var(--gold); }
 
   .toast{ text-shadow:2px 0 0 #000,-2px 0 0 #000,0 2px 0 #000,0 -2px 0 #000; position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:#16302F; border:1px solid rgba(255,255,255,0.16); color:var(--foam); font-size:13.5px; font-weight:600; padding:12px 18px; border-radius:999px; z-index:80; opacity:0; transition:opacity .25s ease, transform .25s ease; pointer-events:none; box-shadow:0 10px 24px rgba(0,0,0,0.35); max-width:88vw; text-align:center; }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }

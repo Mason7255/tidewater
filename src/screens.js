@@ -343,6 +343,16 @@ export function renderChallenges(){
 // Open the shop FIRST, then render its contents. This keeps navigation working
 // even if a shop-rendering problem occurs.
 export var activeShopTab = 'equipment';
+// How many packs a single bait "Buy" click purchases -- a plain number, or
+// the string 'max' meaning "as many packs as you can currently afford of
+// THIS bait" (computed per-row at render/click time, since coins and each
+// bait's pack cost differ). Not saved -- just a UI convenience that resets
+// to 1x on reload, same as which shop tab is open.
+var BULK_BAIT_OPTIONS = [1,5,10,25,'max'];
+var bulkBaitQty = 1;
+function baitPackQtyFor(b){
+  return bulkBaitQty==='max' ? Math.max(1, Math.min(99, Math.floor(state.coins / b.packCost))) : bulkBaitQty;
+}
 export function openTackleShop(tab){
   activeShopTab = ['equipment','bait','storage','consumables','customization'].indexOf(tab) >= 0 ? tab : activeShopTab;
   ['Equipment','Bait','Storage','Consumables','Customization'].forEach(function(name){
@@ -496,17 +506,30 @@ export function renderShop(){
     });
   } else if(activeShopTab === 'bait') {
     var heading=document.createElement('div'); heading.className='shop-section-title'; heading.textContent='BAIT'; list.appendChild(heading);
+    var qtyRow=document.createElement('div'); qtyRow.className='bait-qty-row';
+    BULK_BAIT_OPTIONS.forEach(function(opt){
+      var b=document.createElement('button');
+      b.className='bait-qty-btn'+(bulkBaitQty===opt?' active':'');
+      b.type='button';
+      b.textContent = opt==='max' ? 'Max' : ('x'+opt);
+      b.addEventListener('click', function(){ bulkBaitQty=opt; renderShop(); });
+      qtyRow.appendChild(b);
+    });
+    list.appendChild(qtyRow);
     BAIT_TYPES.forEach(function(b){
       var owned=state.baitCounts[b.id]||0, fish=fishById(b.fishId), locked=fish && fish.level>playerLevel(), selected=currentBaitId()===b.id;
+      var qty=baitPackQtyFor(b), totalAmount=b.packAmount*qty, totalCost=b.packCost*qty;
       var item=document.createElement('div'); item.className='shop-item'+(selected?' selected-item':'');
-      item.innerHTML='<div class="shop-icon">'+b.icon+'</div><div class="shop-body"><div class="shop-title">'+b.name+' — pack of '+b.packAmount+'</div><div class="shop-desc">Targets '+fish.name+'. Requires Fishing Lv '+fish.level+'. You have '+owned+'.</div>'+(selected?'<div class="shop-selected-badge">Currently selected</div>':'')+'</div><button class="shop-buy" data-buybait="'+b.id+'" '+(state.coins<b.packCost||locked?'disabled':'')+'>'+b.packCost+' ⛃</button>';
+      item.innerHTML='<div class="shop-icon">'+b.icon+'</div><div class="shop-body"><div class="shop-title">'+b.name+' — '+totalAmount+' bait'+(qty>1?' ('+qty+' packs)':'')+'</div><div class="shop-desc">Targets '+fish.name+'. Requires Fishing Lv '+fish.level+'. You have '+owned+'.</div>'+(selected?'<div class="shop-selected-badge">Currently selected</div>':'')+'</div><button class="shop-buy" data-buybait="'+b.id+'" '+(state.coins<totalCost||locked?'disabled':'')+'>'+totalCost.toLocaleString()+' ⛃</button>';
       list.appendChild(item);
     });
     Array.prototype.forEach.call(list.querySelectorAll('[data-buybait]'),function(btn){
       btn.addEventListener('click',function(){
-        var b=baitById(btn.getAttribute('data-buybait')); if(!b || state.coins<b.packCost || playerLevel()<fishById(b.fishId).level) return;
-        state.coins-=b.packCost; state.baitCounts[b.id]=(state.baitCounts[b.id]||0)+b.packAmount;
-        saveState(); updateHud(); updateGearCaption(); renderShop(); playBuySound(); showToast('Bought '+b.packAmount+' '+b.name.toLowerCase()+'.');
+        var b=baitById(btn.getAttribute('data-buybait')); if(!b || playerLevel()<fishById(b.fishId).level) return;
+        var qty=baitPackQtyFor(b), totalCost=b.packCost*qty, totalAmount=b.packAmount*qty;
+        if(state.coins<totalCost) return;
+        state.coins-=totalCost; state.baitCounts[b.id]=(state.baitCounts[b.id]||0)+totalAmount;
+        saveState(); updateHud(); updateGearCaption(); renderShop(); playBuySound(); showToast('Bought '+totalAmount+' '+b.name.toLowerCase()+'.');
       });
     });
   } else if(activeShopTab === 'storage') {
