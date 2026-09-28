@@ -353,6 +353,38 @@ export function bigOneDifficultyForFish(fish){
 }
 export function clothingItemsForSlot(slot){ return clothingItems().filter(function(item){ return item.slot===slot; }); }
 
+// ---------------------------------------------------------------------------
+// Per-species minigames -- separate from Big One. Much more common, much
+// lower stakes: no penalty for missing, just a shot at a temporary buff. The
+// first one is Shrimp's "Swarm"; each future species is expected to get its
+// own distinct mechanic (not a Big One reskin), so this stays a dedicated
+// block per fish rather than a generic formula like bigOneDifficultyForFish.
+// ---------------------------------------------------------------------------
+export var SHRIMP_SWARM_CHANCE = 1/1000;
+export var SHRIMP_SWARM_CONFIG = {
+  durationMs: 12000,
+  waveCount: 3,
+  perWave: 5, // 3 waves x 5 = 15 shrimp total
+  waveGapMs: 4000,
+  need: 10 // tag 10 of 15 to trigger the buff below
+};
+// Not a purchasable CONSUMABLE (see those above) -- earned only by clearing
+// the Shrimp Swarm minigame. Still stored the same way in
+// state.activeBuffs[id] (see useConsumable()/isBuffActive() in state.js and
+// game.js), so the same expiry/countdown machinery just works. Applied as a
+// flat multiplier (coinsMult/xpMult), never folded into the additive
+// speed/luck/sell/xp/proficiency bonus pools above -- those are clamped at
+// well under 10x and would clip a jackpot this size down to almost nothing.
+export var SHRIMP_SWARM_BUFF = {
+  id: 'shrimp_swarm',
+  name: 'Swarm Jackpot',
+  icon: '🦐',
+  duration: 60000,
+  coinsMult: 10,
+  xpMult: 10,
+  flavor: 'Every catch is worth ten times as much while this lasts.'
+};
+
 // Challenges are tiered. Claiming one removes it and immediately advances that
 // challenge family to its next target. When the final tier is claimed, that
 // challenge family disappears permanently.

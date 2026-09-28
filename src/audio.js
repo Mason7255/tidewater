@@ -235,6 +235,36 @@ export function playBigOneMissSound(){
   audioTone(330, .16, 'triangle', .08, 0);
   audioTone(247, .28, 'triangle', .08, .12);
 }
+// ---------- Shrimp Swarm minigame ----------
+// Deliberately higher-pitched and quicker than every Big One cue above --
+// Shrimp's own flavor is "tiny and quick," and the tag sound in particular
+// has to survive being triggered many times in rapid succession without
+// getting grating, unlike Big One's more deliberate, spaced-out taps.
+export function playShrimpSwarmStartSound(){
+  if(!ensureAudio()) return;
+  // A quick scatter -- four fast ascending blips, like a school darting off.
+  audioTone(660, .05, 'square', .07, 0);
+  audioTone(784, .05, 'square', .07, .05);
+  audioTone(932, .05, 'square', .07, .10);
+  audioTone(1108, .08, 'sine', .08, .15);
+  audioNoise(.12, .05, 2200, 0);
+}
+export function playShrimpSwarmTagSound(){
+  if(!ensureAudio()) return;
+  audioTone(1400, .04, 'sine', .06, 0); // short and light -- tags fire often
+}
+export function playShrimpSwarmWinSound(){
+  if(!ensureAudio()) return;
+  // A bright, coin-flavored jackpot run distinct from Big One's fanfare.
+  audioTone(783.99, .1, 'square', .10, 0);    // G5
+  audioTone(987.77, .1, 'square', .10, .09);  // B5
+  audioTone(1174.66, .1, 'square', .11, .18); // D6
+  audioTone(1567.98, .5, 'sine', .12, .28);   // G6 landing
+  audioTone(1975.53, .5, 'sine', .09, .28);   // B6 harmony
+  audioNoise(.14, .04, 3600, .28);
+  setTimeout(playFireworkBurst, 320);
+  setTimeout(playFireworkBurst, 520);
+}
 export function playClickSound(){ audioTone(440,0.035,'square',0.035,0); }
 export function playWaterSound(){ audioNoise(0.45,0.012,900,0); audioTone(150+Math.random()*35,0.18,'sine',0.018,0.05); }
 export function startWaterAmbience(){

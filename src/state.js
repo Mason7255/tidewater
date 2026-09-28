@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, CLOTHING_SLOTS, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, baitById, clothingItems, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
+import { BAIT_TYPES, CLOTHING_SLOTS, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, SHRIMP_SWARM_BUFF, baitById, clothingItems, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -386,6 +386,9 @@ export function sellPrice(fish, entry){
   var quality = Math.max(0, Math.min(1, 1-fl));
   var mult = 1 + SELL_QUALITY_BONUS * Math.pow(quality, RATING_EXPONENT);
   mult *= 1 + totalClothingSellBonus() + totalTrinketSellBonus();
+  // Shrimp Swarm jackpot: a flat 10x on top of everything else, not folded
+  // into the additive bonus pool above (see SHRIMP_SWARM_BUFF in data.js).
+  if(isBuffActive(SHRIMP_SWARM_BUFF.id)) mult *= SHRIMP_SWARM_BUFF.coinsMult;
   return Math.max(1, Math.round(fish.coins * mult));
 }
 

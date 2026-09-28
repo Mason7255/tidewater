@@ -12,8 +12,8 @@
 // for why that matters with this many modules importing each other.
 
 
-import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
+import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneSound, playBigOneWinSound, playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
+import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -742,7 +742,26 @@ Array.prototype.forEach.call(document.querySelectorAll('#consumablesRow [data-us
 // if this tick is paused (backgrounded tab) or hasn't fired yet. Also keeps
 // the beer/cigarette accessory on the fisherman itself in sync so it
 // disappears within a second of the buff actually expiring.
-setInterval(function(){ renderConsumablesRow(); updatePlayerBuffAccessories(); }, 1000);
+setInterval(function(){ renderConsumablesRow(); renderSpeciesBuffRow(); updatePlayerBuffAccessories(); }, 1000);
+// Earned, non-purchasable buffs (currently just Shrimp Swarm's jackpot) --
+// a passive status pill above the consumables row, only shown while the
+// buff is actually running. Unlike renderConsumablesRow() there's no button
+// or owned-count to manage, just a countdown, so it's simplest as its own
+// small render function.
+export function renderSpeciesBuffRow(){
+  var row = document.getElementById('speciesBuffRow');
+  if(!row) return;
+  row.innerHTML = '';
+  [SHRIMP_SWARM_BUFF].forEach(function(buff){
+    if(!isBuffActive(buff.id)) return;
+    var secs = Math.max(1, Math.ceil(buffRemainingMs(buff.id) / 1000));
+    var pill = document.createElement('div');
+    pill.className = 'species-buff-pill';
+    pill.title = buff.name + ' — ' + buff.flavor;
+    pill.textContent = buff.icon + ' ' + buff.name + ' ' + secs + 's';
+    row.appendChild(pill);
+  });
+}
 
 // ---------- Dock scene background ----------
 // Paints whichever background is currently selected into #dockScene. Called
@@ -780,7 +799,10 @@ export function grantFish(fish, forcedQuality){
   // Bluegill set: flat XP bonus applied here, once, so every downstream use
   // (record, feedback popup, HUD text, level-up check) sees the same final
   // number rather than each recomputing it themselves.
-  var xpGained = Math.round(fish.xp * (1 + totalClothingXpBonus() + totalTrinketXpBonus()));
+  // Shrimp Swarm jackpot: a flat 10x on top of everything else, not folded
+  // into the additive clothing/trinket bonus above (see SHRIMP_SWARM_BUFF in
+  // data.js -- same reasoning as the coins side in sellPrice(), state.js).
+  var xpGained = Math.round(fish.xp * (1 + totalClothingXpBonus() + totalTrinketXpBonus()) * (isBuffActive(SHRIMP_SWARM_BUFF.id) ? SHRIMP_SWARM_BUFF.xpMult : 1));
   state.xp += xpGained;
   // Carp set/Message in a Bottle: each catch counts as MORE than one catch
   // toward THIS species' proficiency level, tracked separately from
@@ -1344,8 +1366,13 @@ export function beginSingleCast(sessionId){
     // been logged yet, so the encounter never re-fires once you've landed it.
     var bigOneItem = bigOneLogItemForFish(fish.id);
     var triggerBigOne = !bigOneActive && bigOneItem && !state.collectionLog[bigOneItem.id] && Math.random() < BIG_ONE_CHANCE;
+    // Shrimp Swarm: independent of Big One, mutually exclusive with it on the
+    // same cast so the player is never staring at two encounters at once.
+    // Species-specific for now (fish.id === 'shrimp') -- future species get
+    // their own dedicated trigger the same way once their minigame exists.
+    var triggerSwarm = !triggerBigOne && !swarmActive && fish.id === 'shrimp' && Math.random() < SHRIMP_SWARM_CHANCE;
 
-    if(triggerBigOne || result.stars >= 4){
+    if(triggerBigOne || triggerSwarm || result.stars >= 4){
       autoFishing = false;
       fishingSessionId++;
       activeCastId++;
@@ -1354,6 +1381,8 @@ export function beginSingleCast(sessionId){
       if(triggerBigOne){
         // Let the normal catch popup play out first, then the sting + banner.
         setTimeout(function(){ beginBigOneEncounter(fish, bigOneItem, result.stars >= 4); }, 1500);
+      } else if(triggerSwarm){
+        setTimeout(function(){ beginShrimpSwarmEncounter(result.stars >= 4); }, 1200);
       }
       return;
     }
@@ -1564,5 +1593,148 @@ export function showBigOneBanner(fish, onStart){
     setTimeout(function(){ if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay); }, 260);
     if(typeof onStart === 'function') onStart();
   }, {once:true});
+}
+
+// ---------------------------------------------------------------------------
+// Shrimp Swarm: a per-species minigame, separate from Big One. Far more
+// common (SHRIMP_SWARM_CHANCE) and zero-penalty -- clearing it grants a
+// temporary 10x coins/XP buff (SHRIMP_SWARM_BUFF), missing it just resolves
+// as a normal catch with nothing extra, same as if the minigame had never
+// triggered. Fishing pauses for the encounter (same reasoning as Big One --
+// it needs full attention for the full 10-15s) and always resumes after,
+// since unlike Big One there's no manual trophy-style choice to make.
+// ---------------------------------------------------------------------------
+var swarmActive = false;
+
+function beginShrimpSwarmEncounter(alsoTrophy){
+  swarmActive = true;
+  playShrimpSwarmStartSound();
+  showToast('A shrimp swarm scatters across the water!');
+  setTimeout(function(){
+    startShrimpSwarmMinigame(function(success, taggedCount){
+      swarmActive = false;
+      resolveShrimpSwarmOutcome(success, taggedCount);
+      if(!alsoTrophy) startAutoFish();
+    });
+  }, 700);
+}
+
+function resolveShrimpSwarmOutcome(success, taggedCount){
+  if(!success) return; // nothing happens on a whiff -- no toast, no penalty
+  state.activeBuffs[SHRIMP_SWARM_BUFF.id] = Date.now() + SHRIMP_SWARM_BUFF.duration;
+  saveState();
+  renderSpeciesBuffRow();
+  updatePlayerBuffAccessories();
+  playShrimpSwarmWinSound();
+  showToast('Swarm jackpot! Tagged ' + taggedCount + ' — 10x coins & XP for the next minute.');
+}
+
+export function startShrimpSwarmMinigame(onComplete){
+  var cfg = SHRIMP_SWARM_CONFIG;
+  var tagged = 0, spawnedTotal = 0, live = [];
+  var startedAt = Date.now();
+  var raf = null;
+  var waveTimers = [];
+  var finished = false;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'swarm-game-overlay';
+  overlay.innerHTML = '<div class="swarm-game-hud">'+
+    '<div class="swarm-hud-pill tagged" id="swarmTaggedPill">TAGGED 0/'+ (cfg.waveCount*cfg.perWave) +' (need '+cfg.need+')</div>'+
+    '<div class="swarm-hud-pill timer" id="swarmTimerPill">'+ Math.ceil(cfg.durationMs/1000) +'s</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  var taggedPill = overlay.querySelector('#swarmTaggedPill');
+  var timerPill = overlay.querySelector('#swarmTimerPill');
+
+  function updateHud(){
+    taggedPill.textContent = 'TAGGED ' + tagged + '/' + (cfg.waveCount*cfg.perWave) + ' (need ' + cfg.need + ')';
+    var remainMs = Math.max(0, cfg.durationMs - (Date.now() - startedAt));
+    timerPill.textContent = Math.ceil(remainMs/1000) + 's';
+  }
+
+  function spawnShrimp(){
+    spawnedTotal++;
+    var margin = 60;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var el = document.createElement('div');
+    el.className = 'swarm-shrimp';
+    el.textContent = '🦐';
+    var entry = {
+      el: el,
+      x: margin + Math.random() * Math.max(1, vw - margin*2),
+      y: 110 + Math.random() * Math.max(1, vh - margin - 110),
+      vx: 0, vy: 0,
+      nextTurnAt: 0,
+      tagged: false
+    };
+    pickNewVelocity(entry, false);
+    el.style.left = entry.x + 'px';
+    el.style.top = entry.y + 'px';
+    overlay.appendChild(el);
+    el.addEventListener('pointerdown', function(){
+      if(entry.tagged || finished) return;
+      entry.tagged = true;
+      tagged++;
+      updateHud();
+      playShrimpSwarmTagSound();
+      el.classList.add('tagged');
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 220);
+      live.splice(live.indexOf(entry), 1);
+    }, {once:true});
+    live.push(entry);
+  }
+
+  // Base drift speed plus an occasional quick "dart" burst, direction
+  // changed every ~1-1.4s -- reads as jittery/erratic rather than a smooth
+  // glide, matching Shrimp's "tiny and quick" flavor.
+  function pickNewVelocity(entry, dart){
+    var speed = (dart ? 340 : 90) + Math.random() * (dart ? 120 : 60); // px/sec
+    var angle = Math.random() * Math.PI * 2;
+    entry.vx = Math.cos(angle) * speed;
+    entry.vy = Math.sin(angle) * speed;
+    entry.nextTurnAt = Date.now() + 1000 + Math.random() * 400;
+  }
+
+  function tick(){
+    if(finished) return;
+    var now = Date.now();
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var margin = 30;
+    var last = tick.lastTs || now;
+    var dt = Math.min(0.05, (now - last) / 1000);
+    tick.lastTs = now;
+    live.forEach(function(entry){
+      if(now >= entry.nextTurnAt) pickNewVelocity(entry, Math.random() < 0.35);
+      entry.x += entry.vx * dt;
+      entry.y += entry.vy * dt;
+      if(entry.x < margin){ entry.x = margin; entry.vx *= -1; }
+      if(entry.x > vw-margin){ entry.x = vw-margin; entry.vx *= -1; }
+      if(entry.y < 100){ entry.y = 100; entry.vy *= -1; }
+      if(entry.y > vh-margin){ entry.y = vh-margin; entry.vy *= -1; }
+      entry.el.style.left = entry.x + 'px';
+      entry.el.style.top = entry.y + 'px';
+    });
+    updateHud();
+    if(now - startedAt >= cfg.durationMs){ finish(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish(){
+    if(finished) return;
+    finished = true;
+    if(raf) cancelAnimationFrame(raf);
+    waveTimers.forEach(function(t){ clearTimeout(t); });
+    if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    var success = tagged >= cfg.need;
+    onComplete(success, tagged);
+  }
+
+  for(var w=0; w<cfg.waveCount; w++){
+    waveTimers.push(setTimeout(function(){
+      for(var i=0;i<cfg.perWave;i++) spawnShrimp();
+    }, w * cfg.waveGapMs));
+  }
+  raf = requestAnimationFrame(tick);
 }
 
