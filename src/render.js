@@ -74,11 +74,21 @@ function paintEquippedClothingPixels(grid){
     });
   });
 }
-export function pixelAvatarHTML(){
-  var shirt = shirtById(state.shirt || 'shirt_coral').color;
-  var skin = skinById(state.skin || 'skin_light').color;
-  var hair = hairById(state.hair || 'hair_brown').color;
-  var hat = hatByCustomId(state.hat || 'hat_none');
+// Builds the base 24x24 body grid (skin/hair/shirt/hat only, no buffs and no
+// equipped clothing pixels) -- shared by pixelAvatarHTML() below (the real,
+// live character) and the various itemPreviewAvatarHTML()/hatPreviewAvatarHTML()/
+// skinPreviewAvatarHTML()/hairPreviewAvatarHTML()/shirtPreviewAvatarHTML()
+// static "what this looks like" card renders, which have no buffs and
+// substitute one piece of the player's current look for a candidate option
+// without touching the other three. `overrides` (optional) can carry
+// hatId/skinId/hairId/shirtId -- any left out fall back to the player's
+// actual current state.
+function buildBaseAvatarGrid(overrides){
+  overrides = overrides || {};
+  var shirt = shirtById(overrides.shirtId !== undefined ? overrides.shirtId : (state.shirt || 'shirt_coral')).color;
+  var skin = skinById(overrides.skinId !== undefined ? overrides.skinId : (state.skin || 'skin_light')).color;
+  var hair = hairById(overrides.hairId !== undefined ? overrides.hairId : (state.hair || 'hair_brown')).color;
+  var hat = hatByCustomId(overrides.hatId !== undefined ? overrides.hatId : (state.hat || 'hat_none'));
   var grid = Array.from({length:24}, function(){ return Array(24).fill('transparent'); });
   function paint(x,y,w,h,c){ for(var yy=y;yy<y+h;yy++) for(var xx=x;xx<x+w;xx++) if(grid[yy]&&grid[yy][xx]!==undefined) grid[yy][xx]=c; }
   paint(7,21,3,3,'#3C302A'); paint(14,21,3,3,'#3C302A');
@@ -103,6 +113,16 @@ export function pixelAvatarHTML(){
       else { paint(8,2,8,3,hc); paint(6,4,12,2,hc); paint(16,6,4,1,hc); }
     }
   }
+  return {grid:grid, shirt:shirt, skin:skin};
+}
+function gridToPixelHTML(grid, extraClass){
+  var cells='';
+  for(var y=0;y<24;y++) for(var x=0;x<24;x++) cells += '<i class="px" style="background:'+grid[y][x]+'"></i>';
+  return '<div class="pixel-avatar'+(extraClass ? ' '+extraClass : '')+'">'+cells+'</div>';
+}
+export function pixelAvatarHTML(){
+  var base = buildBaseAvatarGrid();
+  var grid = base.grid, shirt = base.shirt, skin = base.skin;
   // Six-Pack (mug in the left/free hand -- the right hand holds the rod) and
   // Cigarettes (a few pixels at the mouth corner, plus a wisp of smoke).
   // These are painted into THIS SAME grid, at cell coordinates that sit
@@ -136,9 +156,52 @@ export function pixelAvatarHTML(){
   }
   lastBuffCellPlan = { beer:beerPlan, cig:cigPlan, smoke:smokePlan };
   paintEquippedClothingPixels(grid);
-  var cells='';
-  for(var y=0;y<24;y++) for(var x=0;x<24;x++) cells += '<i class="px" style="background:'+grid[y][x]+'"></i>';
-  return '<div class="pixel-avatar">'+cells+'</div>';
+  return gridToPixelHTML(grid);
+}
+// A static "item icon" render for a single clothing piece's shop/collection
+// card -- the same base body as the live character (current skin/hair/shirt/
+// hat), with just THIS item's own `pixels` painted on top, regardless of
+// what's actually equipped right now or any active buffs. Lets a card show
+// what a piece actually looks like instead of a generic emoji. Pieces with
+// no `pixels` art yet fall back to their emoji (see clothingItemIconHTML()
+// in screens.js) since there's nothing visual to show.
+export function itemPreviewAvatarHTML(item){
+  var base = buildBaseAvatarGrid();
+  var grid = base.grid;
+  if(item && item.pixels){
+    item.pixels.forEach(function(cell){
+      var x=cell[0], y=cell[1], c=cell[2];
+      if(grid[y] && grid[y][x]!==undefined) grid[y][x]=c;
+    });
+  }
+  return gridToPixelHTML(grid, 'pixel-avatar-mini');
+}
+// A static "item icon" render for a single Customize-tab hat tile (see
+// customizeTile(), screens.js) -- the player's current skin/hair/shirt with
+// THIS hat instead of whatever's actually equipped (state.hat), so every
+// tile in the Hats grid shows the real look instead of a generic cap emoji.
+// No equipped-clothing pixels here (clothing pieces are a separate system,
+// see itemPreviewAvatarHTML() above) -- this is purely a preview of the base
+// cosmetic hat on its own.
+export function hatPreviewAvatarHTML(hatItem){
+  var base = buildBaseAvatarGrid({hatId: hatItem ? hatItem.id : 'hat_none'});
+  return gridToPixelHTML(base.grid, 'pixel-avatar-mini');
+}
+// Same idea as hatPreviewAvatarHTML() above, one per remaining Customize
+// category: the player's current look with just that one slot swapped for
+// the candidate option, so every tile in Skin/Hair/Shirt shows the real
+// look instead of (or in addition to) a flat color square.
+export function skinPreviewAvatarHTML(skinItem){
+  var base = buildBaseAvatarGrid({skinId: skinItem.id});
+  return gridToPixelHTML(base.grid, 'pixel-avatar-mini');
+}
+export function hairPreviewAvatarHTML(hairItem){
+  var base = buildBaseAvatarGrid({hairId: hairItem.id});
+  return gridToPixelHTML(base.grid, 'pixel-avatar-mini');
+}
+export function shirtPreviewAvatarHTML(shirtItem){
+  var base = buildBaseAvatarGrid({shirtId: shirtItem.id});
+  return gridToPixelHTML(base.grid, 'pixel-avatar-mini');
 }
 
 export function renderPlayer(container, withGear){

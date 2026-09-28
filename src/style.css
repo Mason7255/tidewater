@@ -573,7 +573,9 @@
   @keyframes customClaimPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(217,164,65,.5); } 50%{ box-shadow:0 0 0 4px rgba(217,164,65,.18); } }
   @media (prefers-reduced-motion: reduce){ .custom-tile.claimable{ animation:none; box-shadow:0 0 0 2px rgba(217,164,65,.35); } }
   .custom-tile-swatch{ width:60%; height:60%; border-radius:7px; }
-  .custom-tile-hat{ display:flex; align-items:center; justify-content:center; font-size:20px; border-radius:50%; }
+  .custom-tile-avatar{ display:flex; align-items:center; justify-content:center; overflow:hidden; background:rgba(48,77,115,.35); }
+  .custom-tile-avatar .pixel-avatar-mini{ transform:scale(.5); }
+  .custom-tile-hat{ border-radius:50%; }
   .custom-tile-pole{ width:8px; height:74%; border-radius:99px; transform:rotate(20deg); box-shadow:2px 0 0 rgba(255,255,255,.2); }
   .custom-tile-badge{ position:absolute; bottom:3px; right:3px; font-size:8px; font-weight:900; line-height:1; padding:2px 4px; border-radius:5px; }
   .custom-tile-badge.check{ background:var(--gold); color:#1b160b; }
@@ -693,6 +695,8 @@
   .clothing-item-card.selected-item{ border-color:rgba(217,164,65,.55); background:rgba(217,164,65,.08); }
   .clothing-item-card.locked{ opacity:.55; }
   .clothing-item-card .shop-icon{ flex:0 0 auto; }
+  .clothing-item-card .shop-icon.avatar-icon{ overflow:hidden; background:rgba(48,77,115,.35); }
+  .clothing-item-card .shop-icon.avatar-icon .pixel-avatar-mini{ transform:scale(.62); }
   .clothing-item-card .shop-body{ flex:1 1 auto; min-width:0; }
   .clothing-item-card .shop-desc{ color:var(--silver); font-size:11px; line-height:1.35; margin-top:3px; }
   .backgrounds-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(220px, 1fr)); gap:14px; margin-top:18px; }

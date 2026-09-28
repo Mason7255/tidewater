@@ -319,75 +319,104 @@ var CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when 
 var CLOTHING_BIGONE_BONUS_PER_PIECE = 0.1; // 5 pieces => +50% relative Big One chance when a full set is equipped
 var CLOTHING_MYTHIC_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative mythic-find chance when a full set is equipped
 var CLOTHING_UNIQUE_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative unique-find chance when a full set is equipped
+// A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides on
+// the 24x24 avatar grid, painted last in pixelAvatarHTML(), render.js) to
+// actually change how the character looks when it's equipped -- otherwise a
+// piece is stat-only. Every set below dyes the relevant body region (hat/
+// torso+sleeves/legs/feet/hands) to that species' signature color, reusing
+// the exact same coordinates the base body art already paints at (see
+// buildBaseAvatarGrid(), render.js) -- a uniform "gear dye" look rather than
+// bespoke art per piece, since the grid is small enough (a hand is only 2x3
+// cells) that a fully illustrated design per piece isn't really legible.
+function rectPixels(x,y,w,h,hex){
+  var cells=[];
+  for(var yy=y;yy<y+h;yy++) for(var xx=x;xx<x+w;xx++) cells.push([xx,yy,hex]);
+  return cells;
+}
+function clothingSlotPixels(slot, hex){
+  switch(slot){
+    case 'hat': return rectPixels(8,2,8,3,hex).concat(rectPixels(6,4,12,2,hex), rectPixels(16,6,4,1,hex));
+    case 'shirt': return rectPixels(6,12,12,7,hex).concat(rectPixels(4,14,2,6,hex), rectPixels(18,14,2,6,hex));
+    case 'pants': return rectPixels(7,19,10,3,hex);
+    case 'shoes': return rectPixels(7,21,3,3,hex).concat(rectPixels(14,21,3,3,hex));
+    case 'gloves': return rectPixels(4,18,2,3,hex).concat(rectPixels(18,18,2,3,hex));
+    default: return [];
+  }
+}
+var CLOTHING_SET_COLORS = {
+  shrimp: '#F28C6B',
+  anchovies: '#9FC7E0',
+  perch: '#C9A227',
+  bluegill: '#3E7CB1',
+  carp: '#8C6A3F',
+  trout: '#4FA88C',
+  catfish: '#6B5D52',
+  crab: '#D9622B',
+  lobster: '#A32638'
+};
 var CLOTHING_SETS = {
   shrimp: [
-    // A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides
-    // on the 24x24 avatar grid, painted last in pixelAvatarHTML(), render.js)
-    // to actually change how the character looks when it's equipped --
-    // otherwise a piece is stat-only, same as it's always been. None of the
-    // pieces below have one yet (the first attempt at a hat design here
-    // didn't land, waiting on a redo).
-    {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
-    {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Shrimp-foot Boots', icon:'🦐', flavor:'Somehow lets you feel the current through the sole.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Shrimp-claw Gloves', icon:'🦐', flavor:'A firmer grip on the rod than you have ever had.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE}
+    {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.shrimp)},
+    {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.shrimp)},
+    {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.shrimp)},
+    {slot:'shoes', name:'Shrimp-foot Boots', icon:'🦐', flavor:'Somehow lets you feel the current through the sole.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.shrimp)},
+    {slot:'gloves', name:'Shrimp-claw Gloves', icon:'🦐', flavor:'A firmer grip on the rod than you have ever had.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.shrimp)}
   ],
   anchovies: [
-    {slot:'hat', name:'Anchovy-scale Cap', icon:'🐟', flavor:'Catches the light like a tiny disco ball.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Anchovy-tin Vest', icon:'🐟', flavor:'Smells faintly of the harbor. Somehow charming.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
-    {slot:'pants', name:'Anchovy-school Trousers', icon:'🐟', flavor:'A shimmer that seems to move on its own.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Anchovy-fin Loafers', icon:'🐟', flavor:'Every step smells faintly of the boardwalk.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Anchovy-oil Gloves', icon:'🐟', flavor:'Slippery. Lucky, apparently, not clumsy.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE}
+    {slot:'hat', name:'Anchovy-scale Cap', icon:'🐟', flavor:'Catches the light like a tiny disco ball.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.anchovies)},
+    {slot:'shirt', name:'Anchovy-tin Vest', icon:'🐟', flavor:'Smells faintly of the harbor. Somehow charming.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.anchovies)},
+    {slot:'pants', name:'Anchovy-school Trousers', icon:'🐟', flavor:'A shimmer that seems to move on its own.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.anchovies)},
+    {slot:'shoes', name:'Anchovy-fin Loafers', icon:'🐟', flavor:'Every step smells faintly of the boardwalk.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.anchovies)},
+    {slot:'gloves', name:'Anchovy-oil Gloves', icon:'🐟', flavor:'Slippery. Lucky, apparently, not clumsy.', luckBonus:CLOTHING_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.anchovies)}
   ],
   perch: [
-    {slot:'hat', name:'Perch-spine Cap', icon:'🐟', flavor:'Bristly. Looks worse than it feels.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Perch-scale Vest', icon:'🐟', flavor:'Catches the light like tiny coins.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
-    {slot:'pants', name:'Perch-fin Waders', icon:'🐟', flavor:'Stiff at first, then somehow perfect.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Perch-tail Boots', icon:'🐟', flavor:'A little spring in every step.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Perch-gill Gloves', icon:'🐟', flavor:'Haggling feels easier wearing these. Probably a coincidence.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE}
+    {slot:'hat', name:'Perch-spine Cap', icon:'🐟', flavor:'Bristly. Looks worse than it feels.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.perch)},
+    {slot:'shirt', name:'Perch-scale Vest', icon:'🐟', flavor:'Catches the light like tiny coins.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.perch)},
+    {slot:'pants', name:'Perch-fin Waders', icon:'🐟', flavor:'Stiff at first, then somehow perfect.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.perch)},
+    {slot:'shoes', name:'Perch-tail Boots', icon:'🐟', flavor:'A little spring in every step.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.perch)},
+    {slot:'gloves', name:'Perch-gill Gloves', icon:'🐟', flavor:'Haggling feels easier wearing these. Probably a coincidence.', sellBonus:CLOTHING_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.perch)}
   ],
   bluegill: [
-    {slot:'hat', name:'Bluegill-scale Cap', icon:'🐟', flavor:'A faint blue sheen in the right light.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Bluegill-fin Vest', icon:'🐟', flavor:'Lighter than it looks. Easy to move in.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
-    {slot:'pants', name:'Bluegill-tail Waders', icon:'🐟', flavor:'Every cast feels like it teaches you something.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Bluegill-gill Boots', icon:'🐟', flavor:'You notice more standing in these. Hard to explain.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Bluegill-spine Gloves', icon:'🐟', flavor:'A sharper feel for the line than you had before.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE}
+    {slot:'hat', name:'Bluegill-scale Cap', icon:'🐟', flavor:'A faint blue sheen in the right light.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.bluegill)},
+    {slot:'shirt', name:'Bluegill-fin Vest', icon:'🐟', flavor:'Lighter than it looks. Easy to move in.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.bluegill)},
+    {slot:'pants', name:'Bluegill-tail Waders', icon:'🐟', flavor:'Every cast feels like it teaches you something.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.bluegill)},
+    {slot:'shoes', name:'Bluegill-gill Boots', icon:'🐟', flavor:'You notice more standing in these. Hard to explain.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.bluegill)},
+    {slot:'gloves', name:'Bluegill-spine Gloves', icon:'🐟', flavor:'A sharper feel for the line than you had before.', xpBonus:CLOTHING_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.bluegill)}
   ],
   carp: [
-    {slot:'hat', name:'Carp-scale Cap', icon:'🐟', flavor:'Heavy on the head. You get used to it.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Carp-hide Vest', icon:'🐟', flavor:'Thick and stubborn, like the fish it came from.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
-    {slot:'pants', name:'Carp-tail Waders', icon:'🐟', flavor:'Built for standing still a very long time.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Carp-fin Boots', icon:'🐟', flavor:'Planted. You are not going anywhere.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Carp-whisker Gloves', icon:'🐟', flavor:'You start noticing things about the water you never did before.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE}
+    {slot:'hat', name:'Carp-scale Cap', icon:'🐟', flavor:'Heavy on the head. You get used to it.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.carp)},
+    {slot:'shirt', name:'Carp-hide Vest', icon:'🐟', flavor:'Thick and stubborn, like the fish it came from.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.carp)},
+    {slot:'pants', name:'Carp-tail Waders', icon:'🐟', flavor:'Built for standing still a very long time.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.carp)},
+    {slot:'shoes', name:'Carp-fin Boots', icon:'🐟', flavor:'Planted. You are not going anywhere.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.carp)},
+    {slot:'gloves', name:'Carp-whisker Gloves', icon:'🐟', flavor:'You start noticing things about the water you never did before.', proficiencyBonus:CLOTHING_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.carp)}
   ],
   trout: [
-    {slot:'hat', name:'Trout-spotted Cap', icon:'🐟', flavor:'You swear you felt two takes on that last cast.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Trout-scale Vest', icon:'🐟', flavor:'Bright as the fish it came from. Draws a crowd.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
-    {slot:'pants', name:'Trout-tail Waders', icon:'🐟', flavor:'Built for holding steady in fast, cold water.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Trout-fin Boots', icon:'🐟', flavor:'Sure-footed on slick rock. You barely notice the current now.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Trout-gill Gloves', icon:'🐟', flavor:'A quicker sense for when a second fish is circling the line.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE}
+    {slot:'hat', name:'Trout-spotted Cap', icon:'🐟', flavor:'You swear you felt two takes on that last cast.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.trout)},
+    {slot:'shirt', name:'Trout-scale Vest', icon:'🐟', flavor:'Bright as the fish it came from. Draws a crowd.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.trout)},
+    {slot:'pants', name:'Trout-tail Waders', icon:'🐟', flavor:'Built for holding steady in fast, cold water.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.trout)},
+    {slot:'shoes', name:'Trout-fin Boots', icon:'🐟', flavor:'Sure-footed on slick rock. You barely notice the current now.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.trout)},
+    {slot:'gloves', name:'Trout-gill Gloves', icon:'🐟', flavor:'A quicker sense for when a second fish is circling the line.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.trout)}
   ],
   catfish: [
-    {slot:'hat', name:'Catfish-whisker Cap', icon:'🐱', flavor:"Long whiskers trail off the brim. You swear you can feel the bottom through them.", bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Catfish-hide Vest', icon:'🐱', flavor:'Tough and rubbery, built for wrestling something big out of the mud.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
-    {slot:'pants', name:'Catfish-fin Waders', icon:'🐱', flavor:'Planted deep in the silt. You can feel every tug down there.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Catfish-tail Boots', icon:'🐱', flavor:'Heavy soles for wading into the deep, slow water.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Catfish-barbel Gloves', icon:'🐱', flavor:'A sixth sense for when something enormous is circling below.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE}
+    {slot:'hat', name:'Catfish-whisker Cap', icon:'🐱', flavor:"Long whiskers trail off the brim. You swear you can feel the bottom through them.", bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.catfish)},
+    {slot:'shirt', name:'Catfish-hide Vest', icon:'🐱', flavor:'Tough and rubbery, built for wrestling something big out of the mud.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.catfish)},
+    {slot:'pants', name:'Catfish-fin Waders', icon:'🐱', flavor:'Planted deep in the silt. You can feel every tug down there.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.catfish)},
+    {slot:'shoes', name:'Catfish-tail Boots', icon:'🐱', flavor:'Heavy soles for wading into the deep, slow water.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.catfish)},
+    {slot:'gloves', name:'Catfish-barbel Gloves', icon:'🐱', flavor:'A sixth sense for when something enormous is circling below.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.catfish)}
   ],
   crab: [
-    {slot:'hat', name:'Crab-shell Cap', icon:'🦀', flavor:'Hard and knobby. Somehow lucky to wear.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Crab-plate Vest', icon:'🦀', flavor:'Segmented armor plates, faintly iridescent under the sun.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
-    {slot:'pants', name:'Crab-leg Waders', icon:'🦀', flavor:'Clicks faintly with every step. Nobody knows why.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Crab-claw Boots', icon:'🦀', flavor:'Sidesteps better than they walk straight.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Crab-pincer Gloves', icon:'🦀', flavor:'A firm, snapping grip that seems to draw out strange things.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE}
+    {slot:'hat', name:'Crab-shell Cap', icon:'🦀', flavor:'Hard and knobby. Somehow lucky to wear.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.crab)},
+    {slot:'shirt', name:'Crab-plate Vest', icon:'🦀', flavor:'Segmented armor plates, faintly iridescent under the sun.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.crab)},
+    {slot:'pants', name:'Crab-leg Waders', icon:'🦀', flavor:'Clicks faintly with every step. Nobody knows why.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.crab)},
+    {slot:'shoes', name:'Crab-claw Boots', icon:'🦀', flavor:'Sidesteps better than they walk straight.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.crab)},
+    {slot:'gloves', name:'Crab-pincer Gloves', icon:'🦀', flavor:'A firm, snapping grip that seems to draw out strange things.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.crab)}
   ],
   lobster: [
-    {slot:'hat', name:'Lobster-shell Cap', icon:'🦞', flavor:'Polished a deep red. Catches every eye at the dock.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
-    {slot:'shirt', name:'Lobster-plate Vest', icon:'🦞', flavor:'Heavy, layered armor plating. Worth more than it looks.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
-    {slot:'pants', name:'Lobster-tail Waders', icon:'🦞', flavor:'A stiff, springy stride that never quite feels natural.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
-    {slot:'shoes', name:'Lobster-leg Boots', icon:'🦞', flavor:'Ten legs\' worth of confidence packed into two boots.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
-    {slot:'gloves', name:'Lobster-claw Gauntlets', icon:'🦞', flavor:'Heavy, armored, and strangely precise for something this bulky.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE}
+    {slot:'hat', name:'Lobster-shell Cap', icon:'🦞', flavor:'Polished a deep red. Catches every eye at the dock.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.lobster)},
+    {slot:'shirt', name:'Lobster-plate Vest', icon:'🦞', flavor:'Heavy, layered armor plating. Worth more than it looks.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.lobster)},
+    {slot:'pants', name:'Lobster-tail Waders', icon:'🦞', flavor:'A stiff, springy stride that never quite feels natural.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.lobster)},
+    {slot:'shoes', name:'Lobster-leg Boots', icon:'🦞', flavor:'Ten legs\' worth of confidence packed into two boots.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.lobster)},
+    {slot:'gloves', name:'Lobster-claw Gauntlets', icon:'🦞', flavor:'Heavy, armored, and strangely precise for something this bulky.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.lobster)}
   ]
 };
 FISH.forEach(function(fish){

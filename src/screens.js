@@ -8,7 +8,7 @@
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
 import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, openGoldenChest, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingBigOneLuckBonus, totalClothingDoubleCatchBonus, totalClothingMythicLuckBonus, totalClothingProficiencyBonus, totalClothingSpeedBonus, totalClothingUniqueLuckBonus, totalClothingXpBonus, totalFishCaught, totalMythicLuckBonus, totalTrinketBigOneLuckBonus, totalTrinketDoubleCatchBonus, totalTrinketProficiencyBonus, totalTrinketSpeedBonus, totalTrinketUniqueLuckBonus, totalTrinketXpBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
-import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
+import { hairPreviewAvatarHTML, hatPreviewAvatarHTML, itemPreviewAvatarHTML, pixelAvatarHTML, renderPlayer, shackDecorIconHTML, shirtPreviewAvatarHTML, showCoinGain, showScreen, showToast, skinPreviewAvatarHTML, updatePlayerBuffAccessories } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state, totalClothingLuckBonus, totalClothingSellBonus, totalTrinketLuckBonus, totalTrinketSellBonus } from './state.js';
 
 document.getElementById('sceneInventoryBtn').addEventListener('click', function(){ renderInventoryList(); showScreen('screen-inventory'); });
@@ -604,10 +604,10 @@ function achievementUnlocked(item){
 }
 export function customizeTile(kind, item, owned, selected){
   var preview='';
-  if(kind==='skin') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
-  if(kind==='hair') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
-  if(kind==='shirt') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
-  if(kind==='hat') preview='<div class="custom-tile-swatch custom-tile-hat" style="background:'+item.color+';">'+(item.icon||'')+'</div>';
+  if(kind==='skin') preview='<div class="custom-tile-swatch custom-tile-avatar">'+skinPreviewAvatarHTML(item)+'</div>';
+  if(kind==='hair') preview='<div class="custom-tile-swatch custom-tile-avatar">'+hairPreviewAvatarHTML(item)+'</div>';
+  if(kind==='shirt') preview='<div class="custom-tile-swatch custom-tile-avatar">'+shirtPreviewAvatarHTML(item)+'</div>';
+  if(kind==='hat') preview='<div class="custom-tile-swatch custom-tile-hat custom-tile-avatar">'+hatPreviewAvatarHTML(item)+'</div>';
   if(kind==='pole') preview='<div class="custom-tile-pole'+(item.celestial?' pole-celestial':'')+'"'+(item.celestial?'':' style="background:'+item.color+';"')+'></div>';
   var isAchievement = !!item.unlockFishId;
   var progress = achievementProgress(item);
@@ -840,7 +840,7 @@ export function renderClothing(){
       var fish = fishById(item.fishId);
       var card=document.createElement('div'); card.className='clothing-item-card'+(equipped?' selected-item':'')+(!owned?' locked':'');
       card.innerHTML =
-        '<div class="shop-icon">'+(owned?item.icon:'❔')+'</div>'+
+        '<div class="shop-icon'+(owned?' avatar-icon':'')+'">'+(owned?itemPreviewAvatarHTML(item):'❔')+'</div>'+
         '<div class="shop-body">'+
           '<div class="shop-title">'+(owned?item.name:'???')+'</div>'+
           '<div class="shop-desc">'+(owned
