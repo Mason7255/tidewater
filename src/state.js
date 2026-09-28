@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, CLOTHING_SLOTS, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, SHRIMP_SWARM_BUFF, baitById, clothingItems, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
+import { BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, SHRIMP_SWARM_BUFF, baitById, clothingItems, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -138,6 +138,25 @@ export function loadState(raw){
       state.collectionLog = parsed.collectionLog && typeof parsed.collectionLog === 'object' ? parsed.collectionLog : {};
       state.claimedChallenges = parsed.claimedChallenges && typeof parsed.claimedChallenges === 'object' ? parsed.claimedChallenges : {};
       state.challengeTiers = parsed.challengeTiers && typeof parsed.challengeTiers === 'object' ? parsed.challengeTiers : {};
+      // Retroactive backfill: the per-species challenge cosmetics
+      // (FISH_CHALLENGE_COSMETICS, data.js) didn't exist when a save might
+      // have already claimed some/all of a fish's 9 tiers -- claiming one
+      // back then just advanced the tier and granted nothing (see the old
+      // "reserved for a future update" toast, screens.js). Re-grant every
+      // reward for every tier a save has ALREADY claimed, every time a save
+      // loads. Re-checking a save that already owns everything just re-sets
+      // the same `true` values, so this is safe to run unconditionally
+      // rather than needing a one-time migration flag.
+      CHALLENGES.forEach(function(c){
+        if(!c.cosmeticRewards) return;
+        var claimedTiers = Math.max(0, Number(state.challengeTiers[c.id] || 0));
+        for(var t=0; t<claimedTiers; t++){
+          var reward = c.cosmeticRewards[t];
+          if(!reward) continue;
+          if(!state.ownedCustomization[reward.kind+'s']) state.ownedCustomization[reward.kind+'s'] = {};
+          state.ownedCustomization[reward.kind+'s'][reward.id] = true;
+        }
+      });
       Object.keys(state.claimedChallenges).forEach(function(k){ if(state.claimedChallenges[k] === true) delete state.claimedChallenges[k]; });
       refreshRecentCatches();
       return true;
