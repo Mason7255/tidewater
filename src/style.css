@@ -540,20 +540,37 @@
   .shop-item{ display:flex; align-items:center; gap:14px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.04); border-radius:var(--radius-m); padding:16px; margin-bottom:12px; transition:border-color .15s ease, box-shadow .15s ease, background .15s ease; }
   .shop-item.selected-item{ border-color:var(--gold); background:rgba(217,164,65,.10); box-shadow:0 0 0 2px rgba(217,164,65,.14), 0 8px 20px rgba(0,0,0,.16); }
   .shop-selected-badge{ color:var(--gold); font-size:10px; font-weight:900; letter-spacing:.5px; text-transform:uppercase; margin-top:5px; }
-  .custom-shop-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:12px; }
-  .custom-card{ display:flex; flex-direction:column; gap:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); border-radius:var(--radius-m); padding:15px; transition:border-color .15s ease, box-shadow .15s ease, background .15s ease; }
-  .custom-card.selected-item{ border-color:var(--gold); background:rgba(217,164,65,.10); box-shadow:0 0 0 2px rgba(217,164,65,.14); }
-  .custom-preview{ height:72px; border-radius:12px; background:rgba(0,0,0,.16); display:flex; align-items:center; justify-content:center; position:relative; overflow:hidden; }
-  .custom-shirt-preview{ width:44px; height:42px; border-radius:16px 16px 10px 10px; box-shadow:inset 0 -7px rgba(0,0,0,.12); }
-  .custom-hat-preview{ width:52px; height:24px; border-radius:26px 26px 8px 8px; position:relative; box-shadow:inset 0 -5px rgba(0,0,0,.12); }
-  .custom-hat-preview:after{ content:''; position:absolute; width:66px; height:8px; left:50%; bottom:-4px; transform:translateX(-50%); border-radius:99px; background:inherit; filter:brightness(.86); }
-  .custom-pole-preview{ width:6px; height:56px; border-radius:99px; transform:rotate(28deg); box-shadow:2px 0 0 rgba(255,255,255,.22); }
+  /* ---------- Customize tab (angler cosmetics) ----------
+     Replaced the old big description-card grid (.custom-card etc, removed)
+     with a dense grid of small square tiles -- scales much better once
+     challenge-unlocked pieces start stacking up per category. */
+  .customize-cat-tabs{ display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .customize-cat-tab{ font-size:12.5px; font-weight:800; padding:7px 15px; border-radius:999px; background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); color:var(--silver); }
+  .customize-cat-tab.active{ background:var(--gold); color:#1b160b; border-color:var(--gold); }
+  .customize-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(58px,1fr)); gap:8px; }
+  .custom-tile{ position:relative; aspect-ratio:1; border-radius:10px; border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); display:flex; align-items:center; justify-content:center; overflow:hidden; transition:border-color .15s ease, box-shadow .15s ease, transform .1s ease; cursor:pointer; }
+  .custom-tile:active{ transform:scale(0.95); }
+  .custom-tile.selected-item{ border-color:var(--gold); box-shadow:0 0 0 2px rgba(217,164,65,.3); }
+  .custom-tile.locked{ opacity:.45; }
+  /* Achievement-unlocked item (e.g. Shrimp Crown, catch 5,000 shrimp) once
+     its condition is met but not yet claimed -- pulses gently so it stands
+     out from the rest of the grid as "something's ready here". */
+  .custom-tile.claimable{ border-color:var(--gold); animation:customClaimPulse 1.4s ease-in-out infinite; }
+  @keyframes customClaimPulse{ 0%,100%{ box-shadow:0 0 0 0 rgba(217,164,65,.5); } 50%{ box-shadow:0 0 0 4px rgba(217,164,65,.18); } }
+  @media (prefers-reduced-motion: reduce){ .custom-tile.claimable{ animation:none; box-shadow:0 0 0 2px rgba(217,164,65,.35); } }
+  .custom-tile-swatch{ width:60%; height:60%; border-radius:7px; }
+  .custom-tile-hat{ display:flex; align-items:center; justify-content:center; font-size:20px; border-radius:50%; }
+  .custom-tile-pole{ width:8px; height:74%; border-radius:99px; transform:rotate(20deg); box-shadow:2px 0 0 rgba(255,255,255,.2); }
+  .custom-tile-badge{ position:absolute; bottom:3px; right:3px; font-size:8px; font-weight:900; line-height:1; padding:2px 4px; border-radius:5px; }
+  .custom-tile-badge.check{ background:var(--gold); color:#1b160b; }
+  .custom-tile-badge.claim{ background:var(--gold); color:#1b160b; font-size:11px; padding:1px 3px; }
+  .custom-tile-badge.price{ background:rgba(0,0,0,.6); color:var(--foam); border:1px solid rgba(255,255,255,.22); font-size:7.5px; }
   /* Celestial Rod: a slow-cycling black/purple/blue/teal gradient standing
      in for a Dark Matter-style shifting camo. Applied on top of both the
-     shop preview swatch and the actual equipped rod (.player-rod) -- see
-     customizationCard(), screens.js, and renderPlayer(), render.js, which
-     both skip the normal inline background:color for this one item so this
-     class's animated gradient shows through instead. */
+     Customize tile (.custom-tile-pole) and the actual equipped rod
+     (.player-rod) -- see customizeTile(), screens.js, and renderPlayer(),
+     render.js, which both skip the normal inline background:color for this
+     one item so this class's animated gradient shows through instead. */
   .pole-celestial{
     background:linear-gradient(160deg,#05030a 0%,#1a0e3a 12%,#3a0f5c 24%,#0e2a6e 38%,#1b7a8c 50%,#6a1f8c 62%,#0a1440 76%,#2a0a4a 88%,#05030a 100%);
     background-size:100% 320%;
@@ -562,12 +579,6 @@
   }
   @keyframes celestialShift{ 0%{ background-position:0% 0%; } 50%{ background-position:0% 100%; } 100%{ background-position:0% 0%; } }
   @media (prefers-reduced-motion: reduce){ .pole-celestial{ animation:none; background-position:0% 40%; } }
-  .pixel-mini{ width:64px; height:64px; display:flex; align-items:center; justify-content:center; background:#172535; image-rendering:pixelated; }
-  .pixel-face{ width:24px; height:24px; border:4px solid #25201c; image-rendering:pixelated; }
-  .pixel-hair{ width:32px; height:12px; border:4px solid #25201c; image-rendering:pixelated; }
-  .custom-item-title{ font-weight:900; font-size:14px; }
-  .custom-item-desc{ color:var(--silver); font-size:11.5px; line-height:1.35; min-height:31px; }
-  .custom-card .shop-buy{ width:100%; }
   .shop-icon{ width:46px; height:46px; border-radius:12px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:22px; background:rgba(217,164,65,0.12); }
   .shop-body{ flex:1 1 auto; min-width:0; }
   .shop-title{ font-weight:800; font-size:14.5px; }

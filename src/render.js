@@ -6,7 +6,7 @@
 // ---------- Toast ----------
 
 
-import { CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, HATS, OUTFIT_COLORS, equipmentById } from './data.js';
+import { CLOTHING_SLOTS, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, HATS, OUTFIT_COLORS, clothingItems, equipmentById } from './data.js';
 import { isBuffActive, state } from './state.js';
 
 export var toastEl = document.getElementById('toast');
@@ -51,6 +51,29 @@ export function hatIcon(id){
 // punching a transparent hole in the sleeve/hand.
 var lastBuffCellPlan = null;
 
+// Most clothing pieces (see CLOTHING_SETS, data.js) are still just a name +
+// icon + stat bonus, with no visual effect on the character at all -- the
+// avatar only ever draws the base skin/hair/shirt/hat customization above.
+// A piece can opt into actually changing how the character looks by
+// carrying a `pixels` array: a list of [x,y,hex] cell overrides on the same
+// 24x24 grid pixelAvatarHTML() paints everything else on (hand-drawn by the
+// player and extracted from an exported PNG -- see the Shrimp-shell Cap
+// entry in data.js for the first one). Painted last, after hair/hat/buffs,
+// so an equipped piece with pixel art always wins over the base look;
+// equipped pieces with no `pixels` field are unaffected (same as before).
+function paintEquippedClothingPixels(grid){
+  var items = clothingItems();
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing && state.equippedClothing[slot];
+    if(!id) return;
+    var item = items.filter(function(c){ return c.id===id; })[0];
+    if(!item || !item.pixels) return;
+    item.pixels.forEach(function(cell){
+      var x=cell[0], y=cell[1], c=cell[2];
+      if(grid[y] && grid[y][x]!==undefined) grid[y][x]=c;
+    });
+  });
+}
 export function pixelAvatarHTML(){
   var shirt = shirtById(state.shirt || 'shirt_coral').color;
   var skin = skinById(state.skin || 'skin_light').color;
@@ -68,10 +91,17 @@ export function pixelAvatarHTML(){
   grid[9][10]='#1c1c1c'; grid[9][13]='#1c1c1c';
   grid[13][10]=shade(shirt,-25); grid[13][11]=shade(shirt,-25); grid[13][12]=shade(shirt,-25);
   if(hat && hat.id!=='hat_none'){
-    var hc=hat.color;
-    if(hat.name.indexOf('Beanie')>=0){ paint(7,2,10,3,hc); paint(8,1,8,1,hc); }
-    else if(hat.name.indexOf('Bucket')>=0){ paint(7,2,10,3,hc); paint(5,5,14,2,hc); }
-    else { paint(8,2,8,3,hc); paint(6,4,12,2,hc); paint(16,6,4,1,hc); }
+    if(hat.pixels){
+      // A hand-drawn hat (e.g. the achievement-unlocked Shrimp Crown --
+      // see CUSTOM_HATS, data.js) carries its own exact cell art instead of
+      // fitting one of the generic silhouettes below.
+      hat.pixels.forEach(function(cell){ var x=cell[0], y=cell[1], c=cell[2]; if(grid[y] && grid[y][x]!==undefined) grid[y][x]=c; });
+    } else {
+      var hc=hat.color;
+      if(hat.name.indexOf('Beanie')>=0){ paint(7,2,10,3,hc); paint(8,1,8,1,hc); }
+      else if(hat.name.indexOf('Bucket')>=0){ paint(7,2,10,3,hc); paint(5,5,14,2,hc); }
+      else { paint(8,2,8,3,hc); paint(6,4,12,2,hc); paint(16,6,4,1,hc); }
+    }
   }
   // Six-Pack (mug in the left/free hand -- the right hand holds the rod) and
   // Cigarettes (a few pixels at the mouth corner, plus a wisp of smoke).
@@ -105,6 +135,7 @@ export function pixelAvatarHTML(){
     smokePlan.forEach(function(c){ grid[c[1]][c[0]] = c[3]; });
   }
   lastBuffCellPlan = { beer:beerPlan, cig:cigPlan, smoke:smokePlan };
+  paintEquippedClothingPixels(grid);
   var cells='';
   for(var y=0;y<24;y++) for(var x=0;x<24;x++) cells += '<i class="px" style="background:'+grid[y][x]+'"></i>';
   return '<div class="pixel-avatar">'+cells+'</div>';

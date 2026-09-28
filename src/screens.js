@@ -480,8 +480,8 @@ function baitPackQtyFor(b){
   return bulkBaitQty==='max' ? Math.max(1, Math.min(99, Math.floor(state.coins / b.packCost))) : bulkBaitQty;
 }
 export function openTackleShop(tab){
-  activeShopTab = ['equipment','bait','storage','consumables','customization'].indexOf(tab) >= 0 ? tab : activeShopTab;
-  ['Equipment','Bait','Storage','Consumables','Customization'].forEach(function(name){
+  activeShopTab = ['equipment','bait','storage','consumables'].indexOf(tab) >= 0 ? tab : activeShopTab;
+  ['Equipment','Bait','Storage','Consumables'].forEach(function(name){
     var id='shopTab'+name, active=activeShopTab===name.toLowerCase();
     document.getElementById(id).classList.toggle('active',active);
     document.getElementById(id).setAttribute('aria-selected',active?'true':'false');
@@ -547,11 +547,10 @@ document.getElementById('shopTabBait').addEventListener('click', function(){ set
 document.getElementById('shopTabEquipment').addEventListener('click', function(){ setShopTab('equipment'); });
 document.getElementById('shopTabStorage').addEventListener('click', function(){ setShopTab('storage'); });
 document.getElementById('shopTabConsumables').addEventListener('click', function(){ setShopTab('consumables'); });
-document.getElementById('shopTabCustomization').addEventListener('click', function(){ setShopTab('customization'); });
 
 export function setShopTab(tab){
-  activeShopTab = ['equipment','bait','storage','consumables','customization'].indexOf(tab) >= 0 ? tab : 'equipment';
-  ['Equipment','Bait','Storage','Consumables','Customization'].forEach(function(name){
+  activeShopTab = ['equipment','bait','storage','consumables'].indexOf(tab) >= 0 ? tab : 'equipment';
+  ['Equipment','Bait','Storage','Consumables'].forEach(function(name){
     var id='shopTab'+name, active=activeShopTab===name.toLowerCase();
     document.getElementById(id).classList.toggle('active',active);
     document.getElementById(id).setAttribute('aria-selected',active?'true':'false');
@@ -563,48 +562,111 @@ export function setShopTab(tab){
   }
 }
 
-export function customizationCard(kind, item, owned, selected){
+// ---------- Customize (angler cosmetics) ----------
+// Used to live as a "Customization" tab inside the Tackle Shop, rendered as
+// big description cards (customizationCard()/renderCustomizationShop(),
+// removed) -- that stopped scaling once there was more than a handful of
+// items per slot. Its own rail tab now, one category shown at a time, as a
+// dense grid of small square tiles (customizeTile()/renderCustomizeScreen()
+// below) so it stays legible as challenge-unlocked pieces get added.
+function customizeSections(){
+  return [
+    {kind:'skin', title:'SKIN TONES', items:CUSTOM_SKINS, owned:state.ownedCustomization.skins, selected:state.skin||'skin_light'},
+    {kind:'hair', title:'HAIR', items:CUSTOM_HAIR, owned:state.ownedCustomization.hairs, selected:state.hair||'hair_brown'},
+    {kind:'shirt', title:'SHIRTS', items:CUSTOM_SHIRTS, owned:state.ownedCustomization.shirts, selected:state.shirt||'shirt_coral'},
+    {kind:'hat', title:'HATS', items:CUSTOM_HATS, owned:state.ownedCustomization.hats, selected:state.hat||'hat_none'},
+    {kind:'pole', title:'POLES', items:CUSTOM_POLES, owned:state.ownedCustomization.poles, selected:state.poleColor||'pole_brown'}
+  ];
+}
+// A customization item is normally bought with coins (item.cost), but one
+// gated behind a catch-count achievement instead (item.unlockFishId +
+// item.unlockCount -- e.g. the Shrimp Crown hat, catch 5,000 shrimp) skips
+// the shop entirely: it's free to claim once the count is hit, and shows
+// its progress toward that count while it isn't.
+function achievementProgress(item){
+  if(!item.unlockFishId) return null;
+  return { have: (state.caught && state.caught[item.unlockFishId]) || 0, need: item.unlockCount };
+}
+function achievementUnlocked(item){
+  var p = achievementProgress(item);
+  return !p || p.have >= p.need;
+}
+export function customizeTile(kind, item, owned, selected){
   var preview='';
-  if(kind==='skin') preview='<div class="pixel-mini"><div class="pixel-face" style="background:'+item.color+';"></div></div>';
-  if(kind==='hair') preview='<div class="pixel-mini"><div class="pixel-hair" style="background:'+item.color+';"></div></div>';
-  if(kind==='shirt') preview='<div class="custom-shirt-preview" style="background:'+item.color+';"></div>';
-  if(kind==='hat') preview='<div class="custom-hat-preview" style="background:'+item.color+';"></div>';
-  if(kind==='pole') preview='<div class="custom-pole-preview'+(item.celestial?' pole-celestial':'')+'"'+(item.celestial?'':' style="background:'+item.color+';"')+'></div>';
-  var card=document.createElement('div'); card.className='custom-card'+(selected?' selected-item':'');
-  var action=selected ? 'Selected' : (owned ? 'Equip' : item.cost.toLocaleString()+' ⛃');
-  var disabled=!owned && state.coins<item.cost;
-  card.innerHTML='<div class="custom-preview">'+preview+'</div><div class="custom-item-title">'+item.name+'</div><div class="custom-item-desc">'+(selected?'Currently equipped.':(owned?'Owned and ready to wear.':'Add it to your angler customization collection.'))+'</div><button class="shop-buy" '+(disabled||selected?'disabled':'')+'>'+action+'</button>';
-  card.querySelector('button').addEventListener('click', function(){
+  if(kind==='skin') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
+  if(kind==='hair') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
+  if(kind==='shirt') preview='<div class="custom-tile-swatch" style="background:'+item.color+';"></div>';
+  if(kind==='hat') preview='<div class="custom-tile-swatch custom-tile-hat" style="background:'+item.color+';">'+(item.icon||'')+'</div>';
+  if(kind==='pole') preview='<div class="custom-tile-pole'+(item.celestial?' pole-celestial':'')+'"'+(item.celestial?'':' style="background:'+item.color+';"')+'></div>';
+  var isAchievement = !!item.unlockFishId;
+  var progress = achievementProgress(item);
+  var unlocked = achievementUnlocked(item);
+  var claimable = isAchievement && !owned && unlocked;
+  var locked = !owned && (isAchievement ? !unlocked : state.coins<item.cost);
+  var tile=document.createElement('div');
+  tile.className='custom-tile'+(selected?' selected-item':'')+(locked?' locked':'')+(claimable?' claimable':'');
+  tile.title = item.name + (selected ? ' — equipped' : owned ? ' — owned'
+    : isAchievement ? (unlocked ? ' — ready to claim!' : ' — catch '+progress.need.toLocaleString()+' '+item.unlockFishId+' ('+progress.have.toLocaleString()+'/'+progress.need.toLocaleString()+')')
+    : ' — '+item.cost.toLocaleString()+' coins');
+  tile.innerHTML = preview +
+    (selected ? '<div class="custom-tile-badge check">✓</div>' :
+      claimable ? '<div class="custom-tile-badge claim">🎁</div>' :
+      isAchievement ? '<div class="custom-tile-badge price">'+formatShortCoins(progress.have)+'/'+formatShortCoins(progress.need)+'</div>' :
+      !owned ? '<div class="custom-tile-badge price">'+formatShortCoins(item.cost)+'</div>' : '');
+  tile.addEventListener('click', function(){
     if(selected) return;
-    if(!owned){ if(state.coins<item.cost) return; state.coins-=item.cost; state.ownedCustomization[kind+'s'][item.id]=true; showCoinGain(item.cost*-1); }
+    if(!owned){
+      if(isAchievement){ if(!unlocked) return; state.ownedCustomization[kind+'s'][item.id]=true; }
+      else { if(state.coins<item.cost) return; state.coins-=item.cost; state.ownedCustomization[kind+'s'][item.id]=true; showCoinGain(item.cost*-1); }
+    }
     if(kind==='skin') state.skin=item.id;
     if(kind==='hair') state.hair=item.id;
     if(kind==='shirt') state.shirt=item.id;
     if(kind==='hat') state.hat=item.id;
     if(kind==='pole') state.poleColor=item.id;
-    saveState(); updateHud(); renderPlayer(document.getElementById('dockPlayerWrap'),true); renderCustomizationShop();
+    saveState(); updateHud(); renderPlayer(document.getElementById('dockPlayerWrap'),true); renderCustomizeScreen();
     playBuySound();
-    showToast((owned?'Equipped ':'Bought and equipped ')+item.name+'.');
+    showToast((owned?'Equipped ':(isAchievement?'Claimed and equipped ':'Bought and equipped '))+item.name+'.');
   });
-  return card;
+  return tile;
 }
-
-export function renderCustomizationShop(){
-  var list=document.getElementById('shopList'); list.innerHTML='';
-  var sections=[
-    {kind:'skin',title:'SKIN TONES',items:CUSTOM_SKINS,owned:state.ownedCustomization.skins,selected:state.skin||'skin_light'},
-    {kind:'hair',title:'HAIR',items:CUSTOM_HAIR,owned:state.ownedCustomization.hairs,selected:state.hair||'hair_brown'},
-    {kind:'shirt',title:'SHIRTS',items:CUSTOM_SHIRTS,owned:state.ownedCustomization.shirts,selected:state.shirt||'shirt_coral'},
-    {kind:'hat',title:'HATS',items:CUSTOM_HATS,owned:state.ownedCustomization.hats,selected:state.hat||'hat_none'},
-    {kind:'pole',title:'POLES',items:CUSTOM_POLES,owned:state.ownedCustomization.poles,selected:state.poleColor||'pole_brown'}
-  ];
-  sections.forEach(function(section){
-    var heading=document.createElement('div'); heading.className='shop-section-title'; heading.textContent=section.title; list.appendChild(heading);
-    var grid=document.createElement('div'); grid.className='custom-shop-grid';
-    section.items.forEach(function(item){ grid.appendChild(customizationCard(section.kind,item,!!section.owned[item.id],section.selected===item.id)); });
-    list.appendChild(grid);
+// Cost badges on a small square tile don't have room for "16,500,000 ⛃" --
+// abbreviate anything at or above 1,000 the way most idle games do (1.2K,
+// 3.4M) so it still fits, while cheap items just show their plain number.
+function formatShortCoins(n){
+  if(n >= 1000000000) return (n/1000000000).toFixed(n%1000000000===0?0:1)+'B';
+  if(n >= 1000000) return (n/1000000).toFixed(n%1000000===0?0:1)+'M';
+  if(n >= 1000) return (n/1000).toFixed(n%1000===0?0:1)+'K';
+  return String(n);
+}
+export var activeCustomizeCategory = 'skin';
+export function renderCustomizeScreen(){
+  var section = customizeSections().filter(function(s){ return s.kind===activeCustomizeCategory; })[0] || customizeSections()[0];
+  var balanceEl = document.getElementById('customizeCoinBalance');
+  if(balanceEl) balanceEl.textContent = state.coins.toLocaleString()+' ⛃';
+  var titleEl = document.getElementById('customizeGridTitle');
+  if(titleEl) titleEl.textContent = section.title;
+  var grid = document.getElementById('customizeGrid');
+  grid.innerHTML = '';
+  section.items.forEach(function(item){ grid.appendChild(customizeTile(section.kind, item, !!section.owned[item.id], section.selected===item.id)); });
+}
+export function setCustomizeCategory(cat){
+  activeCustomizeCategory = ['skin','hair','shirt','hat','pole'].indexOf(cat) >= 0 ? cat : 'skin';
+  ['Skin','Hair','Shirt','Hat','Pole'].forEach(function(name){
+    var id='customizeCat'+name, active=activeCustomizeCategory===name.toLowerCase();
+    var btn=document.getElementById(id);
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active?'true':'false');
   });
+  renderCustomizeScreen();
 }
+document.getElementById('viewCustomizeBtn').addEventListener('click', function(){ setCustomizeCategory(activeCustomizeCategory); showScreen('screen-customize'); });
+document.getElementById('backFromCustomize').addEventListener('click', function(){ showScreen('screen-dock'); });
+document.getElementById('customizeCatSkin').addEventListener('click', function(){ setCustomizeCategory('skin'); });
+document.getElementById('customizeCatHair').addEventListener('click', function(){ setCustomizeCategory('hair'); });
+document.getElementById('customizeCatShirt').addEventListener('click', function(){ setCustomizeCategory('shirt'); });
+document.getElementById('customizeCatHat').addEventListener('click', function(){ setCustomizeCategory('hat'); });
+document.getElementById('customizeCatPole').addEventListener('click', function(){ setCustomizeCategory('pole'); });
 
 export function renderShop(){
   var coinBalanceEl = document.getElementById('shopCoinBalance');
@@ -695,8 +757,6 @@ export function renderShop(){
         showToast('Bought '+c.packAmount+' '+c.name.toLowerCase()+'.');
       });
     });
-  } else {
-    renderCustomizationShop();
   }
 }
 

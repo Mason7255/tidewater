@@ -133,6 +133,7 @@
       <button class="rail-btn" id="viewUpgradesBtn" type="button">Upgrades</button>
       <button class="rail-btn" id="viewShackBtn" type="button">Fishing Shack</button>
       <button class="rail-btn" id="viewEquipmentBtn" type="button">Equipment</button>
+      <button class="rail-btn" id="viewCustomizeBtn" type="button">Customize</button>
       <button class="rail-btn" id="viewTrophyBtn" type="button">Trophies</button>
       <button class="rail-btn" id="viewRecordsBtn" type="button">Records</button>
       <button class="rail-btn" id="viewCollectionBtn" type="button">Species</button>
@@ -288,7 +289,6 @@
       <button class="shop-tab" id="shopTabBait" type="button" role="tab" aria-selected="false">Bait</button>
       <button class="shop-tab" id="shopTabStorage" type="button" role="tab" aria-selected="false">Storage</button>
       <button class="shop-tab" id="shopTabConsumables" type="button" role="tab" aria-selected="false">Consumables</button>
-      <button class="shop-tab" id="shopTabCustomization" type="button" role="tab" aria-selected="false">Customization</button>
     </div>
     <div id="shopList"></div>
   </section>
@@ -306,6 +306,27 @@
     <div class="equipment-list" id="ownedEquipmentList"></div>
     <div class="clothing-list" id="clothingList" style="display:none;"></div>
     <div class="clothing-list" id="trinketsList" style="display:none;"></div>
+  </section>
+
+  <!-- CUSTOMIZE (angler cosmetics -- pulled out of the Shop into its own
+       tab since the cosmetic list only grows from here, especially once
+       challenge-unlocked pieces are added) -->
+  <section class="screen panel" id="screen-customize">
+    <button class="nav-back" id="backFromCustomize">✕ Close</button>
+    <div class="shop-header-row">
+      <h2 style="margin:0;">Customize</h2>
+      <span class="shop-coin-balance" id="customizeCoinBalance">0 ⛃</span>
+    </div>
+    <p class="intro-text" style="margin-bottom:18px;">Gear up your angler. More pieces unlock as you clear challenges.</p>
+    <div class="customize-cat-tabs" role="tablist" aria-label="Customization category">
+      <button class="customize-cat-tab active" id="customizeCatSkin" type="button" role="tab" aria-selected="true">Skin</button>
+      <button class="customize-cat-tab" id="customizeCatHair" type="button" role="tab" aria-selected="false">Hair</button>
+      <button class="customize-cat-tab" id="customizeCatShirt" type="button" role="tab" aria-selected="false">Shirt</button>
+      <button class="customize-cat-tab" id="customizeCatHat" type="button" role="tab" aria-selected="false">Hat</button>
+      <button class="customize-cat-tab" id="customizeCatPole" type="button" role="tab" aria-selected="false">Pole</button>
+    </div>
+    <div class="shop-section-title" id="customizeGridTitle">SKIN TONES</div>
+    <div class="customize-grid" id="customizeGrid"></div>
   </section>
 
   <!-- UPGRADES -->

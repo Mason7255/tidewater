@@ -64,7 +64,16 @@ export var CUSTOM_HATS = [
   {id:'hat_teal_bucket', name:'Teal Bucket Hat', color:'#2C9B92', icon:'👒', cost:275},
   {id:'hat_purple_bucket', name:'Purple Bucket Hat', color:'#8058A8', icon:'👒', cost:350},
   {id:'hat_black_beanie', name:'Black Beanie', color:'#30363D', icon:'🎩', cost:500},
-  {id:'hat_gold_beanie', name:'Golden Beanie', color:'#D9A441', icon:'🎩', cost:800}
+  {id:'hat_gold_beanie', name:'Golden Beanie', color:'#D9A441', icon:'🎩', cost:800},
+  // Achievement-unlocked, not bought: catch 5,000 shrimp and it's free to
+  // claim from the Customize tab (see achievementProgress()/customizeTile(),
+  // screens.js, which reads unlockFishId+unlockCount instead of cost for
+  // any item that has them). `pixels` is the player's own hand-drawn design
+  // (pixelartcss.com, on the 24x24 avatar grid), extracted from their
+  // exported PNG the same way as the Shrimp-shell Cap attempt earlier --
+  // painted on top of the generic hat-shape logic in pixelAvatarHTML(),
+  // render.js, instead of it, whenever this hat is equipped.
+  {id:'hat_shrimp_crown', name:'Shrimp Crown', color:'#FF9800', icon:'👑', cost:0, unlockFishId:'shrimp', unlockCount:5000, pixels:[[9,0,'#FF9800'],[14,0,'#FF9800'],[6,1,'#FF9800'],[8,1,'#FF9800'],[15,1,'#FF9800'],[17,1,'#FF9800'],[6,2,'#FF9800'],[8,2,'#FF9800'],[10,2,'#FF9800'],[13,2,'#FF9800'],[15,2,'#FF9800'],[17,2,'#FF9800'],[6,3,'#FF9800'],[8,3,'#CD7D05'],[9,3,'transparent'],[10,3,'#CD7D05'],[11,3,'transparent'],[12,3,'transparent'],[13,3,'#CD7D05'],[14,3,'transparent'],[15,3,'#CD7D05'],[17,3,'#FF9800'],[7,4,'#FF9800'],[8,4,'#FF9800'],[9,4,'#CD7D05'],[10,4,'#CD7D05'],[11,4,'#FF9800'],[12,4,'#FF9800'],[13,4,'#CD7D05'],[14,4,'#CD7D05'],[15,4,'#FF9800'],[16,4,'#FF9800'],[7,5,'#FF9800'],[8,5,'#FF9800'],[9,5,'#F9A11F'],[10,5,'#FF9800'],[11,5,'#CD7D05'],[12,5,'#CD7D05'],[13,5,'#FF9800'],[14,5,'#F9A11F'],[15,5,'#F9A11F'],[16,5,'#FF9800'],[7,6,'#000000'],[8,6,'#F9A11F'],[9,6,'#F9A11F'],[10,6,'#FF9800'],[11,6,'#CD7D05'],[12,6,'#CD7D05'],[13,6,'#FF9800'],[14,6,'#F9A11F'],[15,6,'#F9A11F'],[16,6,'#000000'],[7,7,'#000000'],[8,7,'#FF9800'],[9,7,'#FF9800'],[10,7,'#FF9800'],[11,7,'#CD7D05'],[12,7,'#CD7D05'],[13,7,'#FF9800'],[14,7,'#FF9800'],[15,7,'#FF9800'],[16,7,'#000000'],[7,8,'#FF9800'],[8,8,'#FF9800'],[9,8,'#FF9800'],[10,8,'#CD7D05'],[11,8,'#FF9800'],[12,8,'#FF9800'],[13,8,'#CD7D05'],[14,8,'#FF9800'],[15,8,'#FF9800'],[16,8,'#FF9800'],[7,9,'#FF9800'],[8,9,'#FF9800'],[9,9,'#FF9800'],[10,9,'#FF9800'],[11,9,'#FF9800'],[12,9,'#FF9800'],[13,9,'#FF9800'],[14,9,'#FF9800'],[15,9,'#FF9800'],[16,9,'#FF9800'],[8,10,'#FF9800'],[9,10,'#F9A11F'],[10,10,'#F9A11F'],[11,10,'#F9A11F'],[12,10,'#F9A11F'],[13,10,'#F9A11F'],[14,10,'#F9A11F'],[15,10,'#FF9800'],[8,11,'#FF9800'],[9,11,'#FF9800'],[10,11,'#FF9800'],[11,11,'#FF9800'],[12,11,'#FF9800'],[13,11,'#FF9800'],[14,11,'#FF9800'],[15,11,'#FF9800']]}
 ];
 export var CUSTOM_POLES = [
   {id:'pole_brown', name:'Weathered Wood Pole', color:'#7A5A38', cost:0},
@@ -80,7 +89,7 @@ export var CUSTOM_POLES = [
   // anything ever reads it expecting a plain color) -- the real look is a
   // slow-cycling black/purple/blue/teal gradient driven entirely by CSS
   // (.pole-celestial, style.css), applied instead of the inline color
-  // whenever celestial:true (see customizationCard(), screens.js, and
+  // whenever celestial:true (see customizeTile(), screens.js, and
   // renderPlayer(), render.js).
   {id:'pole_celestial', name:'Celestial Rod', color:'#1a0e3a', cost:16500000, celestial:true}
 ];
@@ -282,6 +291,12 @@ var CLOTHING_XP_BONUS_PER_PIECE = 0.06; // 5 pieces => 30% total when a full set
 var CLOTHING_PROFICIENCY_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a full set is equipped
 var CLOTHING_SETS = {
   shrimp: [
+    // A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides
+    // on the 24x24 avatar grid, painted last in pixelAvatarHTML(), render.js)
+    // to actually change how the character looks when it's equipped --
+    // otherwise a piece is stat-only, same as it's always been. None of the
+    // pieces below have one yet (the first attempt at a hat design here
+    // didn't land, waiting on a redo).
     {slot:'hat', name:'Shrimp-shell Cap', icon:'🦐', flavor:'A little snug. Smells faintly of brine.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
     {slot:'shirt', name:'Shrimp-scale Vest', icon:'🦐', flavor:'Iridescent plating stitched from countless molts.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
     {slot:'pants', name:'Shrimp-tail Waders', icon:'🦐', flavor:'Surprisingly flexible for something so armored.', speedBonus:CLOTHING_SPEED_BONUS_PER_PIECE},
