@@ -1738,3 +1738,25 @@ export function startShrimpSwarmMinigame(onComplete){
   raf = requestAnimationFrame(tick);
 }
 
+// ---------------------------------------------------------------------------
+// TEMPORARY dev tools -- force-trigger a minigame for testing, bypassing its
+// odds entirely (and, for Big One, the "already logged" guard too). Wired up
+// from a hidden checkbox in Options (see menu.js). Remove this whole block,
+// its export, and the Options/menu.js wiring together once testing is done
+// -- same pattern as the earlier Big One dev tool that got pulled before.
+// ---------------------------------------------------------------------------
+export function forceBigOneEncounter(){
+  if(bigOneActive || swarmActive) return;
+  var eq = currentEquipment();
+  var fish = eq ? fishById(eq.fishId) : fishById('shrimp');
+  var bigOneItem = fish ? bigOneLogItemForFish(fish.id) : null;
+  if(!fish || !bigOneItem) return;
+  autoFishing = false; fishingSessionId++; activeCastId++; clearFishingTimer(); parkRodIdle();
+  beginBigOneEncounter(fish, bigOneItem, false);
+}
+export function forceShrimpSwarmEncounter(){
+  if(bigOneActive || swarmActive) return;
+  autoFishing = false; fishingSessionId++; activeCastId++; clearFishingTimer(); parkRodIdle();
+  beginShrimpSwarmEncounter(false);
+}
+

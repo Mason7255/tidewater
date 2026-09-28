@@ -86,6 +86,20 @@
         <div><div class="option-title">Exit to title</div><div class="option-desc">Return to the title screen. Anything not saved to a slot will be lost.</div></div>
         <button class="btn-tiny ghost" id="exitToTitleBtn" style="white-space:normal;">Exit to title</button>
       </div>
+      <!-- TEMPORARY dev tools, for testing minigames without waiting on RNG.
+           Remove this whole block (and its wiring in menu.js) once testing
+           is done -- same pattern as the earlier Big One dev tool. -->
+      <div class="option-row">
+        <div><div class="option-title">Dev tools</div><div class="option-desc">Testing only. Force-triggers minigames on the next cast.</div></div>
+        <input type="checkbox" id="devModeCheck">
+      </div>
+      <div class="option-row" id="devToolsRow" style="display:none;">
+        <div><div class="option-title">Force minigame</div><div class="option-desc">Skips the odds and starts one right away.</div></div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <button class="btn-tiny gold" id="forceBigOneBtn" style="white-space:normal;">Force Big One</button>
+          <button class="btn-tiny gold" id="forceShrimpSwarmBtn" style="white-space:normal;">Force Shrimp Swarm</button>
+        </div>
+      </div>
     </div>
   </section>
 

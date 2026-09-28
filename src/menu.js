@@ -7,7 +7,7 @@
 
 import { audioMaster, ensureAudio, playClickSound, soundCheck, startWaterAmbience, stopWaterAmbience } from './audio.js';
 import { OUTFIT_COLORS, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
-import { animationsEnabled, applyBackground, closeCatchInspect, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
+import { animationsEnabled, applyBackground, closeCatchInspect, forceBigOneEncounter, forceShrimpSwarmEncounter, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showScreen, showToast } from './render.js';
 import { SLOT_COUNT, activeSlot, deleteSlotData, escapeHtml, formatSavedAt, getSlotInfo, loadSlot, saveState, saveToSlot, setActiveSlot, setCatchIdCounter, setState, state } from './state.js';
 
@@ -87,6 +87,29 @@ newGameBtn.addEventListener('click', function(){ resetToFreshGame(); });
 loadGameBtn.addEventListener('click', function(){ openSlots('load', 'screen-menu'); });
 optionsBtn.addEventListener('click', function(){ openOptions('screen-menu'); });
 animationsCheck.addEventListener('change', function(){ setAnimationsEnabled(animationsCheck.checked); });
+
+// TEMPORARY dev tools -- see the matching block in game.js. Not persisted to
+// state/localStorage on purpose (always off on reload). Remove this whole
+// block, the option-rows in index.html, and the exports in game.js together
+// once testing is done.
+(function(){
+  var devModeCheck = document.getElementById('devModeCheck');
+  var devToolsRow = document.getElementById('devToolsRow');
+  var forceBigOneBtn = document.getElementById('forceBigOneBtn');
+  var forceShrimpSwarmBtn = document.getElementById('forceShrimpSwarmBtn');
+  if(!devModeCheck || !devToolsRow) return;
+  devModeCheck.addEventListener('change', function(){
+    devToolsRow.style.display = devModeCheck.checked ? '' : 'none';
+  });
+  if(forceBigOneBtn) forceBigOneBtn.addEventListener('click', function(){
+    showScreen('screen-dock');
+    forceBigOneEncounter();
+  });
+  if(forceShrimpSwarmBtn) forceShrimpSwarmBtn.addEventListener('click', function(){
+    showScreen('screen-dock');
+    forceShrimpSwarmEncounter();
+  });
+})();
 
 // ---------- Save / Load slot screen ----------
 // One shared screen drives both flows: 'load' picks a slot to resume (or
