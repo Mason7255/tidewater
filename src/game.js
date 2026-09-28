@@ -601,6 +601,53 @@ export function totalClothingDoubleCatchBonus(){
   return Math.min(total, 0.9); // safety ceiling as more sets get added later
 }
 
+// Catfish set: relative multiplier on the chance a completed cast triggers a
+// Big One encounter (see BIG_ONE_CHANCE / the cast-completion handler
+// below). Stacks additively with the Rusted Key trinket's own
+// bigOneLuckBonus, same relationship every other clothing bonus has with
+// its species' unique item.
+export function totalClothingBigOneLuckBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.bigOneLuckBonus || 0;
+  });
+  return Math.min(total, 2); // safety ceiling: at most a 3x multiplier
+}
+// Crab set: relative multiplier on the chance of finding a mythic/outfit
+// piece (mythicLogItemsForFish, see grantFish() below). Stacks additively
+// with the Small Pearl trinket's own mythicLuckBonus, and is independent of
+// the Lobster set's uniqueLuckBonus (species-specific finds) below.
+export function totalClothingMythicLuckBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.mythicLuckBonus || 0;
+  });
+  return Math.min(total, 2); // safety ceiling: at most a 3x multiplier
+}
+// Lobster set: relative multiplier on the chance of finding that species'
+// own one-of-a-kind collection log item (logItemForFish, see grantFish()
+// below). Stacks additively with the Carved Lobster Claw trinket's own
+// uniqueLuckBonus, and is independent of the Crab set's mythicLuckBonus above.
+export function totalClothingUniqueLuckBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.uniqueLuckBonus || 0;
+  });
+  return Math.min(total, 2); // safety ceiling: at most a 3x multiplier
+}
+
 // Pack of Cigarettes: a temporary, timed version of a clothing/trinket
 // speed bonus -- see isBuffActive() in state.js. Stacks additively with
 // those the same way clothing and trinkets stack with each other.
@@ -619,9 +666,8 @@ export function castDurationMs(fish){
 // ---------- Trinkets ----------
 // state.equippedTrinkets is a flat array of item ids (unlike clothing,
 // trinkets aren't tied to a body slot — any owned trinket can go in any of
-// the TRINKET_SLOTS). Only lobster_claw (speedBonus) and bass_lure
-// (noBaitChance) carry a real effect right now; the rest equip for free
-// with no bonus, ready for effects to be added later.
+// the TRINKET_SLOTS). Most species' unique now carries a real effect; a few
+// still equip for free with no bonus, ready for effects to be added later.
 export function equippedTrinketIds(){
   return (state.equippedTrinkets || []).slice();
 }
@@ -694,14 +740,18 @@ export function totalTrinketProficiencyBonus(){
   });
   return Math.min(total, 3);
 }
-// Silver Ring (the Anchovy unique): a relative multiplier on the chance of
-// finding a fish-specific unique (logItemForFish) or mythic/outfit piece
-// (mythicLogItemsForFish), applied in grantFish() below. Deliberately NOT
+// Small Pearl (the Crab unique): a relative multiplier on the chance of
+// finding a mythic/outfit piece (mythicLogItemsForFish), applied in
+// grantFish() below, stacking additively with the Crab clothing set's own
+// mythicLuckBonus (totalClothingMythicLuckBonus() above). Deliberately NOT
 // applied to universal drops (the Dev Luck Tablet) -- that one's meant to
 // stay an absolute 1-in-10,000,000 regardless of anything else equipped.
 // Relative (chance * (1+bonus)), not additive, since these chances are tiny
 // fractions (0.0002, 0.001) -- an additive +10 percentage points would
-// obliterate the whole rarity curve instead of nudging it.
+// obliterate the whole rarity curve instead of nudging it. Separate from
+// totalTrinketUniqueLuckBonus() below (the Lobster Claw's species-specific
+// version of the same idea) -- this one was named totalMythicLuckBonus()
+// back when a single stat covered both mythics and uniques together.
 export function totalMythicLuckBonus(){
   if(!state.equippedTrinkets) return 0;
   var total = 0;
@@ -709,6 +759,34 @@ export function totalMythicLuckBonus(){
     if(!isTrinketOwned(id)) return;
     var item = trinketById(id);
     if(item) total += item.mythicLuckBonus || 0;
+  });
+  return Math.min(total, 1); // safety ceiling: at most a 2x multiplier
+}
+// Rusted Key (the Catfish unique): relative multiplier on the chance a
+// completed cast triggers a Big One encounter, stacking additively with the
+// Catfish clothing set's own bigOneLuckBonus (totalClothingBigOneLuckBonus()
+// above).
+export function totalTrinketBigOneLuckBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.bigOneLuckBonus || 0;
+  });
+  return Math.min(total, 1); // safety ceiling: at most a 2x multiplier
+}
+// Carved Lobster Claw (the Lobster unique): relative multiplier on the
+// chance of finding that species' own one-of-a-kind collection log item
+// (logItemForFish), stacking additively with the Lobster clothing set's own
+// uniqueLuckBonus (totalClothingUniqueLuckBonus() above).
+export function totalTrinketUniqueLuckBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.uniqueLuckBonus || 0;
   });
   return Math.min(total, 1); // safety ceiling: at most a 2x multiplier
 }
@@ -954,9 +1032,10 @@ export function grantFish(fish, forcedQuality, opts){
     state.records.perSpeciesCatchId[fish.id] = newCatchId;
   }
 
-  var mythicLuck = totalMythicLuckBonus();
+  var mythicLuck = totalClothingMythicLuckBonus() + totalMythicLuckBonus();
+  var uniqueLuck = totalClothingUniqueLuckBonus() + totalTrinketUniqueLuckBonus();
   var logItem = logItemForFish(fish.id);
-  if(logItem && Math.random() < Math.min(1, logItem.chance * (1 + mythicLuck))){
+  if(logItem && Math.random() < Math.min(1, logItem.chance * (1 + uniqueLuck))){
     var isNewLogItem = !state.collectionLog[logItem.id];
     state.collectionLog[logItem.id] = (state.collectionLog[logItem.id]||0) + 1;
     setTimeout(function(){
@@ -1512,7 +1591,8 @@ export function beginSingleCast(sessionId){
     // already caught either way) -- only for a species whose Big One hasn't
     // been logged yet, so the encounter never re-fires once you've landed it.
     var bigOneItem = bigOneLogItemForFish(fish.id);
-    var triggerBigOne = !bigOneActive && bigOneItem && !state.collectionLog[bigOneItem.id] && Math.random() < BIG_ONE_CHANCE;
+    var bigOneLuck = totalClothingBigOneLuckBonus() + totalTrinketBigOneLuckBonus();
+    var triggerBigOne = !bigOneActive && bigOneItem && !state.collectionLog[bigOneItem.id] && Math.random() < Math.min(1, BIG_ONE_CHANCE * (1 + bigOneLuck));
     // Shrimp Swarm: independent of Big One, mutually exclusive with it on the
     // same cast so the player is never staring at two encounters at once.
     // Species-specific for now (fish.id === 'shrimp') -- future species get

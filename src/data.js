@@ -203,9 +203,8 @@ export function makeBaitCounts(){
 // item alongside the fish itself — tracked separately in the Collection Log.
 // Every curiosity below also doubles as an equippable "trinket" (see
 // TRINKET_SLOTS / trinketItems() below) — trinket:true marks it as
-// eligible to equip. Most have no bonus yet (speedBonus/noBaitChance
-// omitted); the two starter trinkets with real effects are lobster_claw
-// (+25% fishing speed) and bass_lure (50% chance a cast uses no bait).
+// eligible to equip. Many still have no bonus (no stat field set), ready
+// for effects to be added later.
 export var COLLECTION_LOG_ITEMS = [
   {id:'old_boot', fishId:'shrimp', name:'Old Boot', icon:'👢', chance:0.0002, flavor:"Somebody's lost boot, waterlogged and sad. Weirdly comfortable once it's broken in, though -- worn-in soles make casting a little quicker.", trinket:true, speedBonus:0.1},
   // Used to carry mythicLuckBonus (a flat boost to unique/mythic drop chance)
@@ -217,9 +216,12 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'broken_watch', fishId:'bluegill', name:'Broken Watch', icon:'⌚', chance:0.0002, flavor:'Stopped at a time nobody remembers.', trinket:true, xpBonus:0.1},
   {id:'bottle_message', fishId:'carp', name:'Message in a Bottle', icon:'🍾', chance:0.0002, flavor:'The ink has run, but something was written here.', trinket:true, proficiencyBonus:1},
   {id:'lost_lure', fishId:'trout', name:'Lost Lure', icon:'🪝', chance:0.0002, flavor:"Another angler's bad luck, sitting on the bottom -- something's still hooked to it.", trinket:true, doubleCatchBonus:0.2},
-  {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open.', trinket:true},
-  {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud.', trinket:true},
-  {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat.', trinket:true, speedBonus:0.25},
+  {id:'old_key', fishId:'catfish', name:'Rusted Key', icon:'🗝️', chance:0.0002, flavor:'No telling what it used to open. Whatever it is, it wants to be found.', trinket:true, bigOneLuckBonus:0.4},
+  {id:'small_pearl', fishId:'crab', name:'Small Pearl', icon:'🫧', chance:0.0002, flavor:'Smooth and pale, tucked in the mud. Feels like it was waiting for something rarer.', trinket:true, mythicLuckBonus:0.35},
+  // Used to carry speedBonus (+25% fishing speed) -- moved off to give the
+  // Lobster set a dedicated unique-luck identity to match; every other
+  // species' unique also carries that species' own clothing-set stat.
+  {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat. It seems to draw out one-of-a-kind things.', trinket:true, uniqueLuckBonus:0.35},
   {id:'bass_lure', fishId:'bass', name:'Vintage Bass Lure', icon:'🪝', chance:0.0002, flavor:'Paint chipped, hooks dulled, story unknown.', trinket:true, noBaitChance:0.5},
   {id:'sturgeon_tag', fishId:'sturgeon', name:'Old Sturgeon Tag', icon:'🏷️', chance:0.0002, flavor:'A faded research tag from years ago.', trinket:true},
   {id:'koi_coin', fishId:'koi', name:'Koi Collector Coin', icon:'🪙', chance:0.0002, flavor:'A polished token stamped with a koi.', trinket:true},
@@ -288,18 +290,35 @@ export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 //     collection log/mythic drops, own coins and XP, just presented lighter
 //     (no trophy-card prompt even at 4-5 stars, so it can never stack a
 //     second decision card on top of the real catch's).
+//   bigOneLuckBonus -- relative multiplier on the chance a completed cast
+//     turns into a "Big One" minigame encounter instead of resolving
+//     normally (totalClothingBigOneLuckBonus()/the Big One roll, game.js).
+//     Relative (BIG_ONE_CHANCE * (1+bonus)), not additive, since the base
+//     chance is already tiny (1/2000) -- same reasoning as mythicLuckBonus
+//     below.
+//   mythicLuckBonus -- relative multiplier on the chance of finding a
+//     mythic/outfit piece (totalClothingMythicLuckBonus()/grantFish(),
+//     game.js). Split off from uniqueLuckBonus below so a set/trinket can
+//     specialize in one without touching the other.
+//   uniqueLuckBonus -- relative multiplier on the chance of finding that
+//     species' own one-of-a-kind collection log item
+//     (totalClothingUniqueLuckBonus()/grantFish(), game.js).
 // Per-piece magnitude has climbed with each new set so far (2% luck, then 3%
-// sell/xp, then 5% proficiency, then 3% double-catch) -- there's no rule that
-// later sets have to match earlier ones, they just need to feel like a
-// meaningful step up. Add a fish's id here (and a matching entry in
-// CLOTHING_SETS) to extend clothing to it.
-var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp', 'trout'];
+// sell/xp, then 5% proficiency, then 3% double-catch, then 6-8% big
+// one/mythic/unique) -- there's no rule that later sets have to match
+// earlier ones, they just need to feel like a meaningful step up. Add a
+// fish's id here (and a matching entry in CLOTHING_SETS) to extend clothing
+// to it.
+var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp', 'trout', 'catfish', 'crab', 'lobster'];
 var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 var CLOTHING_LUCK_BONUS_PER_PIECE = 0.02; // 5 pieces => 10% total when a full set is equipped
 var CLOTHING_SELL_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
 var CLOTHING_XP_BONUS_PER_PIECE = 0.06; // 5 pieces => 30% total when a full set is equipped
 var CLOTHING_PROFICIENCY_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a full set is equipped
 var CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
+var CLOTHING_BIGONE_BONUS_PER_PIECE = 0.1; // 5 pieces => +50% relative Big One chance when a full set is equipped
+var CLOTHING_MYTHIC_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative mythic-find chance when a full set is equipped
+var CLOTHING_UNIQUE_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative unique-find chance when a full set is equipped
 var CLOTHING_SETS = {
   shrimp: [
     // A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides
@@ -348,6 +367,27 @@ var CLOTHING_SETS = {
     {slot:'pants', name:'Trout-tail Waders', icon:'🐟', flavor:'Built for holding steady in fast, cold water.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
     {slot:'shoes', name:'Trout-fin Boots', icon:'🐟', flavor:'Sure-footed on slick rock. You barely notice the current now.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE},
     {slot:'gloves', name:'Trout-gill Gloves', icon:'🐟', flavor:'A quicker sense for when a second fish is circling the line.', doubleCatchBonus:CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE}
+  ],
+  catfish: [
+    {slot:'hat', name:'Catfish-whisker Cap', icon:'🐱', flavor:"Long whiskers trail off the brim. You swear you can feel the bottom through them.", bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Catfish-hide Vest', icon:'🐱', flavor:'Tough and rubbery, built for wrestling something big out of the mud.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
+    {slot:'pants', name:'Catfish-fin Waders', icon:'🐱', flavor:'Planted deep in the silt. You can feel every tug down there.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Catfish-tail Boots', icon:'🐱', flavor:'Heavy soles for wading into the deep, slow water.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Catfish-barbel Gloves', icon:'🐱', flavor:'A sixth sense for when something enormous is circling below.', bigOneLuckBonus:CLOTHING_BIGONE_BONUS_PER_PIECE}
+  ],
+  crab: [
+    {slot:'hat', name:'Crab-shell Cap', icon:'🦀', flavor:'Hard and knobby. Somehow lucky to wear.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Crab-plate Vest', icon:'🦀', flavor:'Segmented armor plates, faintly iridescent under the sun.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
+    {slot:'pants', name:'Crab-leg Waders', icon:'🦀', flavor:'Clicks faintly with every step. Nobody knows why.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Crab-claw Boots', icon:'🦀', flavor:'Sidesteps better than they walk straight.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Crab-pincer Gloves', icon:'🦀', flavor:'A firm, snapping grip that seems to draw out strange things.', mythicLuckBonus:CLOTHING_MYTHIC_BONUS_PER_PIECE}
+  ],
+  lobster: [
+    {slot:'hat', name:'Lobster-shell Cap', icon:'🦞', flavor:'Polished a deep red. Catches every eye at the dock.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
+    {slot:'shirt', name:'Lobster-plate Vest', icon:'🦞', flavor:'Heavy, layered armor plating. Worth more than it looks.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
+    {slot:'pants', name:'Lobster-tail Waders', icon:'🦞', flavor:'A stiff, springy stride that never quite feels natural.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
+    {slot:'shoes', name:'Lobster-leg Boots', icon:'🦞', flavor:'Ten legs\' worth of confidence packed into two boots.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE},
+    {slot:'gloves', name:'Lobster-claw Gauntlets', icon:'🦞', flavor:'Heavy, armored, and strangely precise for something this bulky.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE}
   ]
 };
 FISH.forEach(function(fish){
