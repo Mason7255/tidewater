@@ -1281,7 +1281,7 @@ export function beginSingleCast(sessionId){
       parkRodIdle();
       if(triggerBigOne){
         // Let the normal catch popup play out first, then the sting + banner.
-        setTimeout(function(){ beginBigOneEncounter(fish, bigOneItem); }, 1500);
+        setTimeout(function(){ beginBigOneEncounter(fish, bigOneItem, result.stars >= 4); }, 1500);
       }
       return;
     }
@@ -1293,41 +1293,26 @@ export function beginSingleCast(sessionId){
 
 // ---------------------------------------------------------------------------
 // "Big One" encounter: sting + banner (showBigOneBanner, above) -> tap-circle
-// minigame -> reward. Fishing is left paused throughout (same as any 4-5 star
-// trophy catch) so the encounter can never be missed while the player is
-// away -- it just waits, however long that takes, for Press Start.
+// minigame -> reward. Fishing is paused for the encounter itself (so it can
+// never be missed while the player is away -- it just waits for Press Start)
+// but resumes automatically once it resolves, win or lose, the same way
+// fishing normally just keeps going between casts. The one exception is when
+// this same catch was ALSO a 4-5 star trophy (alsoTrophy) -- that already
+// shows its own card requiring a manual "Keep in bucket"/"Sell"/"Trophy"
+// choice, so fishing stays paused for the player to deal with that, same as
+// any other trophy catch.
 // ---------------------------------------------------------------------------
 var bigOneActive = false;
 
-export function beginBigOneEncounter(fish, bigOneItem){
+function beginBigOneEncounter(fish, bigOneItem, alsoTrophy){
   bigOneActive = true;
   showBigOneBanner(fish, function(){
     startBigOneMinigame(fish, function(success, info){
       bigOneActive = false;
       resolveBigOneOutcome(fish, bigOneItem, success, info);
+      if(!alsoTrophy) startAutoFish();
     });
   });
-}
-
-// ---------------------------------------------------------------------------
-// DEV TOOL -- temporary, only reachable via the "Dev tools" toggle in Options
-// (menu.js/index.html). Skips the 1/2,000 roll and the "already logged"
-// guard entirely so the encounter can be tested on demand; not tied to the
-// real fishing loop at all, so it works whether or not a cast is in flight.
-// ---------------------------------------------------------------------------
-export function forceBigOneEncounter(){
-  if(bigOneActive){ showToast('A Big One encounter is already in progress.'); return; }
-  var eq = currentEquipment();
-  var fish = eq ? fishById(eq.fishId) : null;
-  if(!fish){ showToast('Equip a rod and select a fish before forcing a Big One.'); return; }
-  var bigOneItem = bigOneLogItemForFish(fish.id);
-  if(!bigOneItem){ showToast('No Big One entry exists for '+fish.name+'.'); return; }
-  clearFishingTimer();
-  autoFishing = false;
-  fishingSessionId++;
-  activeCastId++;
-  parkRodIdle();
-  beginBigOneEncounter(fish, bigOneItem);
 }
 
 function resolveBigOneOutcome(fish, bigOneItem, success, info){

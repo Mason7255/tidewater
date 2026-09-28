@@ -7,7 +7,7 @@
 
 import { audioMaster, ensureAudio, playClickSound, soundCheck, startWaterAmbience, stopWaterAmbience } from './audio.js';
 import { OUTFIT_COLORS, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
-import { animationsEnabled, applyBackground, closeCatchInspect, forceBigOneEncounter, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
+import { animationsEnabled, applyBackground, closeCatchInspect, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showScreen, showToast } from './render.js';
 import { SLOT_COUNT, activeSlot, deleteSlotData, escapeHtml, formatSavedAt, getSlotInfo, loadSlot, saveState, saveToSlot, setActiveSlot, setCatchIdCounter, setState, state } from './state.js';
 
@@ -125,25 +125,6 @@ document.getElementById('exitToTitleBtn').addEventListener('click', function(){
 document.getElementById('openSaveBtn').addEventListener('click', function(){ if(state.name) openSlots('save', optionsReturnScreen); });
 document.getElementById('openLoadFromOptionsBtn').addEventListener('click', function(){ openSlots('load', optionsReturnScreen); });
 document.getElementById('topbarMenuBtn').addEventListener('click', function(){ openOptions('screen-dock'); });
-
-// ---------- Dev tools (temporary testing switch, Options screen) ----------
-// Deliberately NOT persisted to `state`/localStorage -- it's a testing
-// convenience, not a game setting, so it's always off again after a reload.
-var devModeCheck = document.getElementById('devModeCheck');
-var devToolsRow = document.getElementById('devToolsRow');
-var forceBigOneBtn = document.getElementById('forceBigOneBtn');
-if(devModeCheck && devToolsRow){
-  devModeCheck.addEventListener('change', function(){
-    devToolsRow.style.display = devModeCheck.checked ? '' : 'none';
-  });
-}
-if(forceBigOneBtn){
-  forceBigOneBtn.addEventListener('click', function(){
-    if(!state.name){ showToast('Start or load a game first.'); return; }
-    showScreen('screen-dock');
-    forceBigOneEncounter();
-  });
-}
 
 // ---------- Custom confirm modal ----------
 // A real in-page dialog instead of window.confirm(), which some embedded/
