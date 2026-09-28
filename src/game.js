@@ -240,6 +240,18 @@ export function levelUnlockText(level){
 }
 export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
   if(!animationsEnabled) return;
+  // The popup's CSS animation is authored for a fixed 2.2-2.75s (see
+  // .fx-catch in style.css), but at high fishing speed a cast can complete
+  // in well under a second (see castDurationMs() -- speed bonuses alone can
+  // cut it to 10% of base). The very next catch used to instantly wipe
+  // whatever was still mid-animation, so the faster you fished the less of
+  // the popup you actually got to see, down to almost nothing at endgame
+  // speeds. Scaling the popup's own lifetime to the current cast duration
+  // means it always finishes its fade-out on its own instead of getting cut
+  // off -- just quicker when you're fishing quicker, never abruptly gone.
+  var castMs = castDurationMs(fish);
+  var lifeMs = leveledUp ? 5200 : Math.max(650, Math.min(2700, castMs - 150));
+  var xpLifeMs = Math.min(1050, lifeMs);
   /* Use a body-level fixed layer. The old version lived inside the player and
      could be clipped/covered by the fishing result overlay. */
   var wrap = document.getElementById('screenEffects');
@@ -271,10 +283,12 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
   var tier = stars >= 5 ? 'rating-max' : (stars >= 4 ? 'rating-high' : (stars >= 3 ? 'rating-mid' : ''));
   catchFx.className = 'fx-item fx-catch ' + tier;
   catchFx.style.color = q.color;
+  catchFx.style.animationDuration = (lifeMs/1000)+'s';
   catchFx.innerHTML = '<span class="fx-fish">'+fishDisplayEmoji(fish)+'</span><span>'+fish.name+' <span class="fx-rating">'+starsText(stars)+'</span></span>';
   wrap.appendChild(catchFx);
 
   var xpFx = document.createElement('div');
+  xpFx.style.animationDuration = (xpLifeMs/1000)+'s';
   xpFx.className = 'fx-item fx-xp';
   xpFx.textContent = '+'+xp+' XP';
   wrap.appendChild(xpFx);
@@ -319,7 +333,7 @@ export function showCatchFeedback(fish, stars, float, xp, leveledUp, newLevel){
   setTimeout(function(){
     var screen = document.getElementById('screenEffects');
     if(screen) screen.innerHTML = '';
-  }, leveledUp ? 5200 : 2700);
+  }, lifeMs);
 }
 var resumeAfterRareCard = false;
 function rareLayer(){

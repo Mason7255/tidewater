@@ -205,7 +205,7 @@ export var COLLECTION_LOG_ITEMS = [
   {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.', trinket:true},
   {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.', trinket:true},
   {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.', trinket:true},
-  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true},
+  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true, speedBonus:0.25},
   {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
   {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
   {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true},
@@ -346,37 +346,39 @@ export function nextShackTier(tier){ return SHACK_TIERS[(tier||0)+1] || null; }
 // item becomes purchasable, matching whatever SHACK_TIERS.tier the player
 // has reached; owning an item is permanent once bought, same as clothing.
 export var SHACK_DECOR = [
-  // Rugs
-  {id:'rug_frayed', slot:'rug', tierRequired:0, cost:80, name:'Frayed Rug', color:'#7a4a3a', flavor:'Older than the dock posts.'},
-  {id:'rug_stripe', slot:'rug', tierRequired:0, cost:150, name:'Striped Rag Rug', color:'#8a6a3a', flavor:'Hand-braided, mismatched colors, somehow works.'},
-  {id:'rug_anchor', slot:'rug', tierRequired:0, cost:300, name:'Anchor-Print Rug', color:'#3f5566', flavor:'A little on the nose, but comfortable.'},
-  {id:'rug_persian', slot:'rug', tierRequired:2, cost:5000, name:'Imported Rug', color:'#7a2a3a', flavor:'Where did this even come from.'},
-  {id:'rug_fur', slot:'rug', tierRequired:3, cost:20000, name:'Faux Fur Rug', color:'#e8e0d0', flavor:"Doesn't match anything else. Doesn't matter."},
-  {id:'rug_gold', slot:'rug', tierRequired:5, cost:150000, name:'Gilded Rug', color:'#d9a441', flavor:'Excessive. Perfect.'},
+  // Rugs -- pattern drives the little pixel-icon render.js builds (rugGrid());
+  // trimTone only matters for pattern:'trimmed' (picks the border color).
+  {id:'rug_frayed', slot:'rug', tierRequired:0, cost:80, name:'Frayed Rug', color:'#7a4a3a', pattern:'textured', flavor:'Older than the dock posts.'},
+  {id:'rug_stripe', slot:'rug', tierRequired:0, cost:150, name:'Striped Rag Rug', color:'#8a6a3a', pattern:'striped', flavor:'Hand-braided, mismatched colors, somehow works.'},
+  {id:'rug_anchor', slot:'rug', tierRequired:0, cost:300, name:'Anchor-Print Rug', color:'#3f5566', pattern:'trimmed', trimTone:'dark', flavor:'A little on the nose, but comfortable.'},
+  {id:'rug_persian', slot:'rug', tierRequired:2, cost:5000, name:'Imported Rug', color:'#7a2a3a', pattern:'trimmed', trimTone:'light', flavor:'Where did this even come from.'},
+  {id:'rug_fur', slot:'rug', tierRequired:3, cost:20000, name:'Faux Fur Rug', color:'#e8e0d0', pattern:'textured', flavor:"Doesn't match anything else. Doesn't matter."},
+  {id:'rug_gold', slot:'rug', tierRequired:5, cost:150000, name:'Gilded Rug', color:'#d9a441', pattern:'trimmed', trimTone:'gold', flavor:'Excessive. Perfect.'},
   // Sofas
-  {id:'sofa_bench', slot:'sofa', tierRequired:0, cost:120, name:'Wooden Bench', color:'#6b4a30', flavor:'A plank with delusions of furniture.'},
-  {id:'sofa_plaid', slot:'sofa', tierRequired:0, cost:250, name:'Plaid Couch', color:'#5a3a2a', flavor:'Smells like a campfire. In a good way.'},
-  {id:'sofa_leather', slot:'sofa', tierRequired:1, cost:1500, name:'Cracked Leather Sofa', color:'#4a2a1a', flavor:'Found at an estate sale. No questions asked.'},
-  {id:'sofa_velvet', slot:'sofa', tierRequired:3, cost:25000, name:'Velvet Sofa', color:'#5a2a4a', flavor:'You have to ask people to take their boots off now.'},
-  {id:'sofa_leviathan', slot:'sofa', tierRequired:5, cost:200000, name:'Leviathan-Hide Sofa', color:'#2a4a4a', flavor:"Don't ask what it's made of."},
+  {id:'sofa_bench', slot:'sofa', tierRequired:0, cost:120, name:'Wooden Bench', color:'#6b4a30', pattern:'bench', flavor:'A plank with delusions of furniture.'},
+  {id:'sofa_plaid', slot:'sofa', tierRequired:0, cost:250, name:'Plaid Couch', color:'#5a3a2a', pattern:'striped', flavor:'Smells like a campfire. In a good way.'},
+  {id:'sofa_leather', slot:'sofa', tierRequired:1, cost:1500, name:'Cracked Leather Sofa', color:'#4a2a1a', pattern:'dotted', flavor:'Found at an estate sale. No questions asked.'},
+  {id:'sofa_velvet', slot:'sofa', tierRequired:3, cost:25000, name:'Velvet Sofa', color:'#5a2a4a', pattern:'trimmed', trimTone:'light', flavor:'You have to ask people to take their boots off now.'},
+  {id:'sofa_leviathan', slot:'sofa', tierRequired:5, cost:200000, name:'Leviathan-Hide Sofa', color:'#2a4a4a', pattern:'textured', flavor:"Don't ask what it's made of."},
   // Curtains (shared across both windows in the room)
-  {id:'curtains_burlap', slot:'curtains', tierRequired:0, cost:60, name:'Burlap Curtains', color:'#8a7250', flavor:'Keeps the glare off the water.'},
-  {id:'curtains_check', slot:'curtains', tierRequired:0, cost:140, name:'Checkered Curtains', color:'#9a3a3a', flavor:'Very kitchen-table energy.'},
-  {id:'curtains_navy', slot:'curtains', tierRequired:1, cost:900, name:'Navy Canvas Curtains', color:'#2a3a5a', flavor:'Actual boat sailcloth. Repurposed, obviously.'},
-  {id:'curtains_lace', slot:'curtains', tierRequired:3, cost:15000, name:'Lace Curtains', color:'#e8e4d8', flavor:"Somebody's grandmother would approve."},
-  {id:'curtains_velvet', slot:'curtains', tierRequired:5, cost:120000, name:'Velvet Drapes', color:'#5a1a2a', flavor:'Blocks out the sunrise. Worth it.'},
-  // Wall Art
-  {id:'wallart_map', slot:'wallArt', tierRequired:0, cost:100, name:'Old Fishing Map', color:'#c9b98a', flavor:"Half the labels don't exist anymore."},
-  {id:'wallart_knot', slot:'wallArt', tierRequired:0, cost:180, name:'Framed Knot Guide', color:'#b09060', flavor:'You still only know three of them.'},
-  {id:'wallart_painting', slot:'wallArt', tierRequired:1, cost:1200, name:'Sunset Painting', color:'#d97a4a', flavor:'Bought it because the colors matched the room.'},
-  {id:'wallart_mounted_net', slot:'wallArt', tierRequired:2, cost:8000, name:'Mounted Net Display', color:'#7a8a8a', flavor:'The net that started it all. Retired with honors.'},
-  {id:'wallart_portrait', slot:'wallArt', tierRequired:4, cost:80000, name:'Oil Portrait (of You, Fishing)', color:'#6a4a2a', flavor:'Commissioned. Slightly too flattering.'},
+  {id:'curtains_burlap', slot:'curtains', tierRequired:0, cost:60, name:'Burlap Curtains', color:'#8a7250', pattern:'plain', flavor:'Keeps the glare off the water.'},
+  {id:'curtains_check', slot:'curtains', tierRequired:0, cost:140, name:'Checkered Curtains', color:'#9a3a3a', pattern:'striped', flavor:'Very kitchen-table energy.'},
+  {id:'curtains_navy', slot:'curtains', tierRequired:1, cost:900, name:'Navy Canvas Curtains', color:'#2a3a5a', pattern:'dotted', flavor:'Actual boat sailcloth. Repurposed, obviously.'},
+  {id:'curtains_lace', slot:'curtains', tierRequired:3, cost:15000, name:'Lace Curtains', color:'#e8e4d8', pattern:'textured', flavor:"Somebody's grandmother would approve."},
+  {id:'curtains_velvet', slot:'curtains', tierRequired:5, cost:120000, name:'Velvet Drapes', color:'#5a1a2a', pattern:'trimmed', trimTone:'gold', flavor:'Blocks out the sunrise. Worth it.'},
+  // Wall Art -- these get bespoke little scenes (wallArtSVG() in render.js)
+  // rather than the generic pattern system, keyed off this same `pattern` id.
+  {id:'wallart_map', slot:'wallArt', tierRequired:0, cost:100, name:'Old Fishing Map', color:'#c9b98a', pattern:'map', flavor:"Half the labels don't exist anymore."},
+  {id:'wallart_knot', slot:'wallArt', tierRequired:0, cost:180, name:'Framed Knot Guide', color:'#b09060', pattern:'knot', flavor:'You still only know three of them.'},
+  {id:'wallart_painting', slot:'wallArt', tierRequired:1, cost:1200, name:'Sunset Painting', color:'#d97a4a', pattern:'sunset', flavor:'Bought it because the colors matched the room.'},
+  {id:'wallart_mounted_net', slot:'wallArt', tierRequired:2, cost:8000, name:'Mounted Net Display', color:'#7a8a8a', pattern:'net', flavor:'The net that started it all. Retired with honors.'},
+  {id:'wallart_portrait', slot:'wallArt', tierRequired:4, cost:80000, name:'Oil Portrait (of You, Fishing)', color:'#6a4a2a', pattern:'portrait', flavor:'Commissioned. Slightly too flattering.'},
   // Table
-  {id:'table_crate', slot:'table', tierRequired:0, cost:90, name:'Crate Table', color:'#8a6a40', flavor:'Still has the shipping stamp on the side.'},
-  {id:'table_spool', slot:'table', tierRequired:0, cost:160, name:'Cable Spool Table', color:'#7a5a3a', flavor:'Classic. Everyone had one of these once.'},
-  {id:'table_oak', slot:'table', tierRequired:1, cost:1100, name:'Oak Table', color:'#5a3a20', flavor:"Sturdy enough to clean a fish on. Please don't."},
-  {id:'table_glass', slot:'table', tierRequired:3, cost:18000, name:'Glass-Top Table', color:'#a8c8cc', flavor:'One wrong cast and this is over.'},
-  {id:'table_mahogany', slot:'table', tierRequired:5, cost:140000, name:'Mahogany Table', color:'#3a1e14', flavor:'Somehow still gets used as a bait station.'}
+  {id:'table_crate', slot:'table', tierRequired:0, cost:90, name:'Crate Table', color:'#8a6a40', pattern:'striped', flavor:'Still has the shipping stamp on the side.'},
+  {id:'table_spool', slot:'table', tierRequired:0, cost:160, name:'Cable Spool Table', color:'#7a5a3a', pattern:'ringed', flavor:'Classic. Everyone had one of these once.'},
+  {id:'table_oak', slot:'table', tierRequired:1, cost:1100, name:'Oak Table', color:'#5a3a20', pattern:'plain', flavor:"Sturdy enough to clean a fish on. Please don't."},
+  {id:'table_glass', slot:'table', tierRequired:3, cost:18000, name:'Glass-Top Table', color:'#a8c8cc', pattern:'trimmed', trimTone:'metal', flavor:'One wrong cast and this is over.'},
+  {id:'table_mahogany', slot:'table', tierRequired:5, cost:140000, name:'Mahogany Table', color:'#3a1e14', pattern:'trimmed', trimTone:'gold', flavor:'Somehow still gets used as a bait station.'}
 ];
 export var SHACK_DECOR_SLOTS = ['rug','sofa','curtains','wallArt','table'];
 export function shackDecorForSlot(slot){ return SHACK_DECOR.filter(function(d){ return d.slot===slot; }); }

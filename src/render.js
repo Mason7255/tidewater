@@ -157,6 +157,162 @@ export function shade(hex, percent){
   return '#' + (0x1000000 + r*0x10000 + g*0x100 + b).toString(16).slice(1);
 }
 
+// ---------- Fishing Shack decor icons ----------
+// Small blocky "pixel art" pieces for each decor item, built the same way as
+// the character (a grid of solid-color cells) instead of a flat swatch.
+// Every color in a grid comes from the item's own `color` field via shade()
+// -- plus a few fixed accents (wood, gold trim, brushed metal) shared across
+// every category so it all still reads as one look. Rug/sofa/curtains/table
+// share one generic silhouette-plus-pattern-overlay system (see *Grid()
+// below); wall art gets its own tiny bespoke scene per item since there are
+// only five and each is meant to look distinct (see wallArtSVG()).
+var SHACK_WOOD = '#2a2016', SHACK_GOLD = '#d9a441', SHACK_METAL = '#8a97a0';
+function shackTrimColor(trimTone, color){
+  if(trimTone==='gold') return SHACK_GOLD;
+  if(trimTone==='metal') return SHACK_METAL;
+  if(trimTone==='light') return shade(color,45);
+  return shade(color,-55);
+}
+function shackToneMap(color, trimTone){
+  return { '.':color, '#':shade(color,-30), '+':shade(color,-55), ',':shade(color,30), '*':shade(color,55), 'K':SHACK_WOOD, 'G':SHACK_GOLD, 'M':SHACK_METAL, 'T':shackTrimColor(trimTone,color) };
+}
+function shackGridSVG(w,h,grid,tmap){
+  var rects='';
+  for(var y=0;y<h;y++) for(var x=0;x<w;x++){
+    var ch = grid[y][x];
+    if(!ch) continue;
+    var fill = tmap[ch];
+    if(!fill) continue;
+    rects += '<rect x="'+x+'" y="'+y+'" width="1.04" height="1.04" fill="'+fill+'"/>';
+  }
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" class="shack-icon-svg">'+rects+'</svg>';
+}
+function rugGrid(pattern){
+  var w=20,h=6, g=[];
+  for(var y=0;y<h;y++){
+    var row=[];
+    for(var x=0;x<w;x++){
+      var edge = (x===0||x===w-1||y===0||y===h-1);
+      if(edge){ row.push(pattern==='trimmed' ? 'T' : '#'); continue; }
+      var c='.';
+      if(pattern==='striped') c = (Math.floor((x-1)/2)%2===0) ? '.' : '#';
+      else if(pattern==='textured') c = ((x*7+y*3)%5===0) ? '*' : '.';
+      row.push(c);
+    }
+    g.push(row);
+  }
+  return g;
+}
+function sofaGrid(pattern){
+  var w=14,h=10, g=[];
+  for(var y=0;y<h;y++) g.push(new Array(w).fill(null));
+  if(pattern==='bench'){
+    for(var x=0;x<w;x++){ g[0][x]='#'; g[1][x]='#'; }
+    for(var y=2;y<8;y++) for(var x=0;x<w;x++) g[y][x]='.';
+    g[9][2]='K'; g[9][11]='K';
+    return g;
+  }
+  for(var x=0;x<w;x++){ g[0][x]=(pattern==='trimmed')?'T':'.'; g[1][x]=(pattern==='trimmed')?'T':'.'; }
+  for(var y=2;y<8;y++){
+    for(var x=0;x<w;x++){
+      if(x<=1 || x>=12){ g[y][x]='#'; continue; }
+      if(x===6||x===7){ g[y][x]='#'; continue; }
+      var c='.';
+      if(pattern==='striped') c = (Math.floor((x-2)/2)%2===0) ? '.' : '#';
+      else if(pattern==='dotted') c = (x%3===0 && y%2===0) ? '#' : '.';
+      else if(pattern==='textured') c = ((x*5+y*3)%4===0) ? ',' : '.';
+      g[y][x]=c;
+    }
+  }
+  g[9][2]='K'; g[9][4]='K'; g[9][9]='K'; g[9][11]='K';
+  return g;
+}
+function curtainGrid(pattern){
+  var w=6,h=14, g=[];
+  for(var y=0;y<h;y++) g.push(new Array(w).fill(null));
+  for(var x=0;x<w;x++) g[0][x]='K';
+  for(var y=1;y<12;y++){
+    for(var x=0;x<w;x++){
+      var c='.';
+      if(pattern==='striped') c = (x%2===0) ? '#' : '.';
+      else if(pattern==='dotted') c = ((x+y)%3===0) ? '#' : '.';
+      else if(pattern==='textured') c = ((x*3+y)%5===0) ? ',' : '.';
+      else if(pattern==='plain') c = (x===2) ? '#' : '.';
+      g[y][x]=c;
+    }
+  }
+  var tie = (pattern==='trimmed') ? 'T' : '#';
+  g[12][1]=tie; g[12][2]=tie; g[12][3]=tie; g[12][4]=tie;
+  g[13][2]=tie; g[13][3]=tie;
+  return g;
+}
+function tableGrid(pattern){
+  var w=14,h=9, g=[];
+  for(var y=0;y<h;y++) g.push(new Array(w).fill(null));
+  if(pattern==='ringed'){
+    for(var x=1;x<13;x++){ g[0][x]='.'; g[2][x]='.'; g[3][x]='.'; }
+    for(var x=1;x<13;x++) g[1][x]='#';
+    g[4][6]='#'; g[4][7]='#';
+    for(var y=5;y<9;y++){ g[y][6]='K'; g[y][7]='K'; }
+    return g;
+  }
+  for(var y=0;y<4;y++){
+    for(var x=0;x<w;x++){
+      var c='.';
+      if(pattern==='striped') c = (x%3===0) ? '#' : '.';
+      else if(pattern==='plain') c = (y===2) ? '#' : '.';
+      else if(pattern==='trimmed') c = (y===0||x===0||x===w-1) ? 'T' : '.';
+      g[y][x]=c;
+    }
+  }
+  for(var x=2;x<12;x++) g[4][x]='#';
+  for(var y=5;y<9;y++){ g[y][2]='K'; g[y][3]='K'; g[y][10]='K'; g[y][11]='K'; }
+  return g;
+}
+function wallArtSVG(item){
+  var w=12,h=8, color=item.color, mat=shade(color,-10), rects='';
+  function px(x,y,fill){ rects += '<rect x="'+x+'" y="'+y+'" width="1.04" height="1.04" fill="'+fill+'"/>'; }
+  for(var x=0;x<w;x++){ px(x,0,mat); px(x,h-1,mat); }
+  for(var y=0;y<h;y++){ px(0,y,mat); px(w-1,y,mat); }
+  var x,y;
+  switch(item.pattern){
+    case 'map':
+      for(y=1;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y,color);
+      [[3,2],[4,2],[4,3],[8,4],[9,4],[9,5]].forEach(function(c){ px(c[0],c[1], shade(color,-40)); });
+      break;
+    case 'knot':
+      for(y=1;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y, shade(color,-45));
+      [[5,1],[6,1],[4,2],[7,2],[3,3],[8,3],[4,4],[7,4],[5,5],[6,5]].forEach(function(c){ px(c[0],c[1], color); });
+      break;
+    case 'sunset':
+      for(y=1;y<4;y++) for(x=1;x<w-1;x++) px(x,y,color);
+      for(y=4;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y, shade(color,-55));
+      px(5,3, shade(color,60)); px(6,3, shade(color,60)); px(5,4, shade(color,60)); px(6,4, shade(color,60));
+      break;
+    case 'net':
+      for(y=1;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y, ((x+y)%3===0 || (x-y+21)%3===0) ? shade(color,-35) : shade(color,10));
+      break;
+    case 'portrait':
+      for(y=1;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y, shade(color,35));
+      px(5,1, shade(color,-40)); px(6,1, shade(color,-40)); px(5,2, shade(color,-40)); px(6,2, shade(color,-40));
+      for(x=4;x<8;x++) for(y=3;y<h-1;y++) px(x,y, shade(color,-40));
+      break;
+    default:
+      for(y=1;y<h-1;y++) for(x=1;x<w-1;x++) px(x,y,color);
+  }
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" class="shack-icon-svg">'+rects+'</svg>';
+}
+export function shackDecorIconHTML(item){
+  if(item.slot==='wallArt') return wallArtSVG(item);
+  var tmap = shackToneMap(item.color, item.trimTone);
+  var w,h,grid;
+  if(item.slot==='rug'){ w=20;h=6; grid=rugGrid(item.pattern); }
+  else if(item.slot==='sofa'){ w=14;h=10; grid=sofaGrid(item.pattern); }
+  else if(item.slot==='curtains'){ w=6;h=14; grid=curtainGrid(item.pattern); }
+  else { w=14;h=9; grid=tableGrid(item.pattern); }
+  return shackGridSVG(w,h,grid,tmap);
+}
+
 export function showScreen(id){
   var target = document.getElementById(id);
   var topbar = document.getElementById('topbar');

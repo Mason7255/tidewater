@@ -8,7 +8,7 @@
 import { playBuySound, playEquipSound } from './audio.js';
 import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
 import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
-import { pixelAvatarHTML, renderPlayer, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
+import { pixelAvatarHTML, renderPlayer, shackDecorIconHTML, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
 document.getElementById('sceneInventoryBtn').addEventListener('click', function(){ renderInventoryList(); showScreen('screen-inventory'); });
@@ -818,7 +818,8 @@ export function renderShack(){
     var item = itemId ? shackDecorById(itemId) : null;
     slotElements[slot].forEach(function(el){
       if(!el) return;
-      el.style.background = item ? item.color : '';
+      el.style.background = '';
+      el.innerHTML = item ? shackDecorIconHTML(item) : '';
       el.title = item ? (item.name+' — '+item.flavor) : ('No '+SHACK_SLOT_LABELS[slot].toLowerCase()+' placed yet.');
       el.classList.toggle('filled', !!item);
     });
@@ -893,7 +894,7 @@ export function renderShackDecorPicker(){
       buttonHtml = '<button class="shop-buy" data-buydecor="'+item.id+'" '+(state.coins<item.cost?'disabled':'')+'>'+item.cost.toLocaleString()+' ⛃</button>';
     }
     row.innerHTML =
-      '<div class="shop-icon" style="background:'+(locked?'rgba(255,255,255,.08)':item.color)+';"></div>'+
+      '<div class="shop-icon shack-icon'+(locked?' locked-icon':'')+'">'+shackDecorIconHTML(item)+'</div>'+
       '<div class="shop-body">'+
         '<div class="shop-title">'+item.name+'</div>'+
         '<div class="shop-desc">'+(locked ? ('Unlocks once you move into the '+shackTierInfo(item.tierRequired).name+'.') : item.flavor)+'</div>'+
