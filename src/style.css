@@ -826,3 +826,56 @@
 #dockScene[data-bg]:not([data-bg="default"]):before {
   display: none;
 }
+
+/* ---------- Fishing Shack ----------
+   Purely cosmetic coin sink (see SHACK_TIERS/SHACK_DECOR in data.js,
+   renderShack() in screens.js): a small room with a handful of furniture
+   slots and a wall of trophy mounts, all just flat colored swatches rather
+   than hand-drawn sprites -- keeps this buildable while still reading as
+   "a room you decorate" instead of a shop list. The character standing in
+   it reuses pixelAvatarHTML() directly (not renderPlayer()/.player), since
+   that class carries a lot of dock-scene-specific positioning/animation
+   that would fight with this completely different layout. */
+.shack-room{
+  position: relative;
+  height: 300px;
+  border-radius: var(--radius-l);
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 10px 30px rgba(0,0,0,.25);
+}
+.shack-wall{ position:absolute; inset:0 0 40% 0; background:#4b3a2c; transition: background .25s ease; }
+.shack-floor{ position:absolute; left:0; right:0; bottom:0; height:40%; background:#6b4a30; transition: background .25s ease; }
+.shack-slot{
+  position: absolute;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.35);
+  box-shadow: inset 0 2px 6px rgba(0,0,0,.25);
+  transition: background .15s ease;
+}
+.shack-slot-rug{ left:14%; right:14%; bottom:4%; height:16%; border-radius:10px; }
+.shack-slot-sofa{ left:6%; bottom:22%; width:24%; height:26%; border-radius:10px 10px 4px 4px; z-index:2; }
+.shack-slot-table{ right:6%; bottom:22%; width:20%; height:18%; border-radius:6px; z-index:2; }
+.shack-slot-wallart{ left:50%; top:12%; transform:translateX(-50%); width:70px; height:48px; border:5px solid #2a2016; border-radius:3px; }
+.shack-slot-curtains{ top:4%; height:34%; width:11%; border-radius:4px; }
+.shack-slot-curtains.left{ left:8%; }
+.shack-slot-curtains.right{ right:8%; }
+.shack-player-wrap{ position:absolute; left:50%; bottom:2%; transform:translateX(-50%); z-index:3; width:72px; height:72px; }
+.shack-mounts{ position:absolute; top:6%; left:50%; transform:translateX(-50%); z-index:4; display:flex; gap:10px; }
+.shack-mount-slot{
+  width: 42px; height: 42px;
+  border-radius: 8px;
+  border: 2px dashed rgba(255,255,255,.35);
+  background: rgba(0,0,0,.22);
+  display: flex; align-items:center; justify-content:center;
+  font-size: 20px;
+  cursor: pointer;
+  transition: transform .1s ease, border-color .15s ease;
+}
+.shack-mount-slot:hover{ transform: scale(1.06); }
+.shack-mount-slot.filled{ border-style:solid; background:rgba(0,0,0,.35); }
+.shack-mount-empty{ font-size:15px; opacity:.55; }
+@media (max-width:700px){
+  .shack-room{ height: 260px; }
+  .shack-mount-slot{ width:36px; height:36px; font-size:17px; }
+}

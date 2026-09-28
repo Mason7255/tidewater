@@ -6,9 +6,9 @@
 
 
 import { playBuySound, playEquipSound } from './audio.js';
-import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, trinketItems, upgradeById } from './data.js';
-import { applyBackground, closeCatchInspect, currentBaitId, equipClothing, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipTrinket, updateGearCaption, updateHud } from './game.js';
-import { renderPlayer, showCoinGain, showScreen, showToast } from './render.js';
+import { BACKGROUNDS, BAIT_TYPES, CHALLENGES, CLOTHING_SLOTS, COLLECTION_LOG_ITEMS, CONSUMABLES, CUSTOM_HAIR, CUSTOM_HATS, CUSTOM_POLES, CUSTOM_SHIRTS, CUSTOM_SKINS, EQUIPMENT, FISH, SHACK_DECOR_SLOTS, TRINKET_SLOTS, UPGRADES, backgroundById, baitById, baitForFish, clothingItemsForSlot, consumableById, equipmentById, isBackgroundUnlocked, nextShackTier, shackDecorById, shackDecorForSlot, shackTierInfo, trinketItems, upgradeById } from './data.js';
+import { applyBackground, buyShackDecor, buyShackTier, closeCatchInspect, currentBaitId, equipClothing, equipShackDecor, equipTrinket, equippedClothingId, fishById, inspectInventoryEntry, isClothingOwned, isTrinketEquipped, isTrinketOwned, keptFishCount, mountableTrophies, mountTrophyInSlot, ownsShackDecor, playerLevel, renderConsumablesRow, sellAllKept, sellEntry, sellTrophy, selectBackground, shackMounts, shackMountSlotCount, shackTier, stopAutoFish, storageCapacity, storageCostForTier, storageName, storageNameForTier, storageUpgradeLevel, storageUnlockedTier, totalClothingSpeedBonus, totalFishCaught, totalTrinketSpeedBonus, trinketNoBaitChance, trophyEntry, unequipClothingSlot, unequipShackDecorSlot, unequipTrinket, unmountShackSlot, updateGearCaption, updateHud } from './game.js';
+import { pixelAvatarHTML, renderPlayer, showCoinGain, showScreen, showToast, updatePlayerBuffAccessories } from './render.js';
 import { fishDisplayEmoji, floatForEntry, floatRarityText, formatFloat, proficiencyLevel, proficiencyProgress, proficiencySpeedMultiplier, proficiencyXp, qualityForStars, qualityInfo, saveState, sellPrice, starsForEntry, starsText, state } from './state.js';
 
 document.getElementById('sceneInventoryBtn').addEventListener('click', function(){ renderInventoryList(); showScreen('screen-inventory'); });
@@ -757,4 +757,206 @@ export function renderUpgrades(){
     });
   });
 }
+
+// ---------- Fishing Shack ----------
+// A pure cosmetic coin sink (see SHACK_TIERS/SHACK_DECOR in data.js): a
+// decoratable room, entirely separate from anything that affects fishing.
+// renderShack() draws the room itself (walls/floor/furniture/mounts/player)
+// and the tier-upgrade card; renderShackDecorPicker() draws the buy/equip
+// list for whichever furniture category tab is active.
+document.getElementById('viewShackBtn').addEventListener('click', function(){ renderShack(); showScreen('screen-shack'); });
+document.getElementById('backFromShack').addEventListener('click', function(){ showScreen('screen-dock'); });
+
+var SHACK_SLOT_LABELS = {rug:'Rug', sofa:'Sofa', curtains:'Curtains', wallArt:'Wall Art', table:'Table'};
+var activeShackTab = 'rug';
+// Wired individually (like the Tackle Shop's own tabs above) rather than
+// looping SHACK_DECOR_SLOTS here -- this file's imports are part of a
+// circular import chain (data.js <-> game.js <-> screens.js), and dereferencing
+// an imported array at module-eval time can run before the exporting module
+// has actually reached that assignment yet. Safe once it's only read from
+// inside a function (setShackTab, called later, after every module's
+// top-level code has finished).
+document.getElementById('shackTab_rug').addEventListener('click', function(){ setShackTab('rug'); });
+document.getElementById('shackTab_sofa').addEventListener('click', function(){ setShackTab('sofa'); });
+document.getElementById('shackTab_curtains').addEventListener('click', function(){ setShackTab('curtains'); });
+document.getElementById('shackTab_wallArt').addEventListener('click', function(){ setShackTab('wallArt'); });
+document.getElementById('shackTab_table').addEventListener('click', function(){ setShackTab('table'); });
+function setShackTab(tab){
+  activeShackTab = SHACK_DECOR_SLOTS.indexOf(tab) >= 0 ? tab : 'rug';
+  SHACK_DECOR_SLOTS.forEach(function(slot){
+    var btn = document.getElementById('shackTab_'+slot);
+    if(!btn) return;
+    var active = activeShackTab === slot;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+  renderShackDecorPicker();
+}
+
+// The room itself: wall/floor colors and every furniture slot's swatch come
+// straight from the current tier/decor state, so this just re-paints
+// whatever's already true rather than tracking incremental UI changes.
+export function renderShack(){
+  var tierInfo = shackTierInfo(shackTier());
+  var next = nextShackTier(shackTier());
+  var room = document.getElementById('shackRoom');
+  var wall = room.querySelector('.shack-wall'), floor = room.querySelector('.shack-floor');
+  if(wall) wall.style.background = tierInfo.wallColor;
+  if(floor) floor.style.background = tierInfo.floorColor;
+  document.getElementById('shackTierName').textContent = tierInfo.name;
+  document.getElementById('shackTierFlavor').textContent = tierInfo.flavor;
+
+  var slotElements = {
+    rug: [document.getElementById('shackSlot_rug')],
+    sofa: [document.getElementById('shackSlot_sofa')],
+    curtains: [document.getElementById('shackSlot_curtainsLeft'), document.getElementById('shackSlot_curtainsRight')],
+    wallArt: [document.getElementById('shackSlot_wallArt')],
+    table: [document.getElementById('shackSlot_table')]
+  };
+  Object.keys(slotElements).forEach(function(slot){
+    var itemId = state.shack.decor[slot];
+    var item = itemId ? shackDecorById(itemId) : null;
+    slotElements[slot].forEach(function(el){
+      if(!el) return;
+      el.style.background = item ? item.color : '';
+      el.title = item ? (item.name+' — '+item.flavor) : ('No '+SHACK_SLOT_LABELS[slot].toLowerCase()+' placed yet.');
+      el.classList.toggle('filled', !!item);
+    });
+  });
+
+  var avatarWrap = document.getElementById('shackPlayerWrap');
+  avatarWrap.innerHTML = pixelAvatarHTML();
+  updatePlayerBuffAccessories();
+
+  var mountsRow = document.getElementById('shackMounts');
+  mountsRow.innerHTML = '';
+  var mounts = shackMounts();
+  for(var i=0;i<tierInfo.mountSlots;i++){
+    var mount = mounts[i];
+    var slotEl = document.createElement('div');
+    slotEl.className = 'shack-mount-slot'+(mount?' filled':'');
+    slotEl.setAttribute('data-mount-slot', i);
+    if(mount){
+      var f = fishById(mount.fishId);
+      var q = qualityInfo(mount.stars);
+      slotEl.style.borderColor = q.color;
+      slotEl.innerHTML = '<span>'+(f?fishDisplayEmoji(f):'🐟')+'</span>';
+      slotEl.title = (f?f.name:'Fish')+' · '+starsText(mount.stars)+' — tap to change';
+    } else {
+      slotEl.innerHTML = '<span class="shack-mount-empty">+</span>';
+      slotEl.title = 'Mount a trophy catch';
+    }
+    mountsRow.appendChild(slotEl);
+  }
+  Array.prototype.forEach.call(mountsRow.querySelectorAll('[data-mount-slot]'), function(el){
+    el.addEventListener('click', function(){ openShackMountPicker(parseInt(el.getAttribute('data-mount-slot'),10)); });
+  });
+
+  var tierCard = document.getElementById('shackTierCard');
+  if(next){
+    var locked = playerLevel() < next.level;
+    var disabled = locked || state.coins < next.cost;
+    tierCard.innerHTML =
+      '<div class="shop-body"><div class="shop-title">Move into the '+next.name+'</div>'+
+      '<div class="shop-desc">'+next.flavor+(locked?'':(' Adds '+(next.mountSlots)+' trophy mount'+(next.mountSlots===1?'':'s')+'.'))+'</div>'+
+      (locked?'<div class="shop-owned">Unlocks at Fishing Lv '+next.level+'</div>':'')+'</div>'+
+      '<button class="shop-buy" id="shackTierBuyBtn" '+(disabled?'disabled':'')+'>'+(locked?'Locked':next.cost.toLocaleString()+' ⛃')+'</button>';
+    var buyBtn = document.getElementById('shackTierBuyBtn');
+    if(buyBtn) buyBtn.addEventListener('click', function(){ if(buyShackTier()) renderShack(); });
+  } else {
+    tierCard.innerHTML = '<div class="shop-body"><div class="shop-title">The Captain\'s Lake House</div><div class="shop-desc">Nowhere nicer to go from here.</div></div>';
+  }
+
+  renderShackDecorPicker();
+}
+
+export function renderShackDecorPicker(){
+  var list = document.getElementById('shackDecorList');
+  if(!list) return;
+  list.innerHTML = '';
+  var slot = activeShackTab;
+  var tier = shackTier();
+  shackDecorForSlot(slot).forEach(function(item){
+    var owned = ownsShackDecor(item.id);
+    var equipped = state.shack.decor[slot] === item.id;
+    var locked = !owned && tier < item.tierRequired;
+    var row = document.createElement('div');
+    row.className = 'shop-item'+(equipped?' selected-item':'');
+    var buttonHtml;
+    if(locked){
+      buttonHtml = '<button class="shop-buy" disabled>Needs '+shackTierInfo(item.tierRequired).name+'</button>';
+    } else if(equipped){
+      buttonHtml = '<button class="shop-buy" data-unequipdecor="'+slot+'">Remove</button>';
+    } else if(owned){
+      buttonHtml = '<button class="shop-buy" data-equipdecor="'+item.id+'">Place</button>';
+    } else {
+      buttonHtml = '<button class="shop-buy" data-buydecor="'+item.id+'" '+(state.coins<item.cost?'disabled':'')+'>'+item.cost.toLocaleString()+' ⛃</button>';
+    }
+    row.innerHTML =
+      '<div class="shop-icon" style="background:'+(locked?'rgba(255,255,255,.08)':item.color)+';"></div>'+
+      '<div class="shop-body">'+
+        '<div class="shop-title">'+item.name+'</div>'+
+        '<div class="shop-desc">'+(locked ? ('Unlocks once you move into the '+shackTierInfo(item.tierRequired).name+'.') : item.flavor)+'</div>'+
+        (equipped?'<div class="shop-owned">Placed</div>':'')+
+      '</div>'+buttonHtml;
+    list.appendChild(row);
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-buydecor]'), function(btn){
+    btn.addEventListener('click', function(){
+      if(buyShackDecor(btn.getAttribute('data-buydecor'))){ renderShackDecorPicker(); }
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-equipdecor]'), function(btn){
+    btn.addEventListener('click', function(){
+      equipShackDecor(btn.getAttribute('data-equipdecor'));
+      playEquipSound(); showToast('Placed.');
+      renderShackDecorPicker(); renderShack();
+    });
+  });
+  Array.prototype.forEach.call(list.querySelectorAll('[data-unequipdecor]'), function(btn){
+    btn.addEventListener('click', function(){
+      unequipShackDecorSlot(btn.getAttribute('data-unequipdecor'));
+      playEquipSound(); showToast('Removed.');
+      renderShackDecorPicker(); renderShack();
+    });
+  });
+}
+
+// Trophy-mount picker: a small modal (reuses .catch-inspect's styling)
+// listing every catch currently sitting in the Trophy Room. Mounting copies
+// a snapshot (fishId/stars/float) rather than referencing the inventory
+// entry directly, so the mount survives even if that fish is later sold.
+function openShackMountPicker(slotIndex){
+  var listEl = document.getElementById('shackMountList');
+  var mounts = shackMounts();
+  var current = mounts[slotIndex];
+  listEl.innerHTML = '';
+  if(current){
+    var removeBtn = document.createElement('button');
+    removeBtn.className = 'btn-tiny ghost'; removeBtn.style.width = '100%';
+    removeBtn.textContent = 'Remove current mount';
+    removeBtn.addEventListener('click', function(){ unmountShackSlot(slotIndex); closeShackMountPicker(); renderShack(); });
+    listEl.appendChild(removeBtn);
+  }
+  var trophies = mountableTrophies();
+  if(trophies.length === 0){
+    var empty = document.createElement('div'); empty.className = 'inv-empty';
+    empty.textContent = 'No trophies kept yet — keep a great catch instead of selling it, from the Inventory screen.';
+    listEl.appendChild(empty);
+  }
+  trophies.forEach(function(entry){
+    var f = fishById(entry.fishId);
+    if(!f) return;
+    var stars = starsForEntry(entry), q = qualityInfo(stars);
+    var row = document.createElement('button');
+    row.className = 'btn-tiny ghost';
+    row.style.cssText = 'width:100%; text-align:left; color:'+q.color+';';
+    row.textContent = fishDisplayEmoji(f)+' '+f.name+' · '+starsText(stars);
+    row.addEventListener('click', function(){ mountTrophyInSlot(slotIndex, entry.catchId); closeShackMountPicker(); renderShack(); });
+    listEl.appendChild(row);
+  });
+  document.getElementById('shackMountModal').classList.add('active');
+}
+function closeShackMountPicker(){ document.getElementById('shackMountModal').classList.remove('active'); }
+document.getElementById('shackMountModalClose').addEventListener('click', closeShackMountPicker);
 

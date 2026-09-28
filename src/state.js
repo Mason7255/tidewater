@@ -9,7 +9,7 @@
 // lookups by catchId stay populated through normal play.
 
 
-import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
+import { BAIT_TYPES, CONSUMABLES, LEVEL_CAP, OUTFIT_COLORS, QUALITY_TIERS, RATING_EXPONENT, SHACK_TIERS, baitById, consumableById, equipmentById, equipmentForFish, levelForXp, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment, trinketById } from './data.js';
 import { fishById, refreshRecentCatches, stopAutoFish } from './game.js';
 import { enterDock } from './menu.js';
 
@@ -35,6 +35,7 @@ export var state = {
   autoSellThreshold:0, // 0 = off; 1-3 = auto-sell that star rating and below. 4-5 star trophy-tier catches are never auto-sold.
   consumableCounts:{},
   activeBuffs:{}, // {consumableId: expiresAtEpochMs}
+  shack:{tier:0, decor:{rug:null, sofa:null, curtains:null, wallArt:null, table:null}, owned:{}, mounts:[]},
   storageTier:0,
   xp:0,
   caught:{},
@@ -95,6 +96,13 @@ export function loadState(raw){
       CONSUMABLES.forEach(function(c){ if(oldConsumables[c.id] != null) migratedConsumables[c.id] = oldConsumables[c.id]; });
       state.consumableCounts = migratedConsumables;
       state.activeBuffs = parsed.activeBuffs && typeof parsed.activeBuffs === 'object' ? parsed.activeBuffs : {};
+      var oldShack = parsed.shack || {};
+      state.shack = {
+        tier: Math.max(0, Math.min(SHACK_TIERS.length-1, Number(oldShack.tier) || 0)),
+        decor: Object.assign({rug:null, sofa:null, curtains:null, wallArt:null, table:null}, oldShack.decor || {}),
+        owned: (oldShack.owned && typeof oldShack.owned === 'object') ? oldShack.owned : {},
+        mounts: Array.isArray(oldShack.mounts) ? oldShack.mounts : []
+      };
       var migratedBaits = makeBaitCounts();
       var oldBaits = parsed.baitCounts || {};
       if(oldBaits.worms || oldBaits.shrimp_bait || oldBaits.cut_bait || oldBaits.glow_lure){

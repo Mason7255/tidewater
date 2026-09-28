@@ -6,7 +6,7 @@
 
 
 import { audioMaster, ensureAudio, playClickSound, soundCheck, startWaterAmbience, stopWaterAmbience } from './audio.js';
-import { OUTFIT_COLORS, makeBaitCounts, startingOwnedEquipment } from './data.js';
+import { OUTFIT_COLORS, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
 import { animationsEnabled, applyBackground, closeCatchInspect, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showScreen, showToast } from './render.js';
 import { SLOT_COUNT, activeSlot, deleteSlotData, escapeHtml, formatSavedAt, getSlotInfo, loadSlot, saveState, saveToSlot, setActiveSlot, setCatchIdCounter, setState, state } from './state.js';
@@ -40,7 +40,9 @@ export function makeFreshState(){
     coins:0, gear:'shrimp_net', ownedGear:startingOwnedEquipment(),
     baitCounts:makeBaitCounts(),
     selectedBait:'shrimp_bait',
-    upgrades:{}, storageTier:0, xp:0, caught:{}, proficiencies:{}, inventory:[],
+    upgrades:{}, autoSellThreshold:0, consumableCounts:makeConsumableCounts(), activeBuffs:{},
+    shack:{tier:0, decor:{rug:null, sofa:null, curtains:null, wallArt:null, table:null}, owned:{}, mounts:[]},
+    storageTier:0, xp:0, caught:{}, proficiencies:{}, inventory:[],
     records:{ bestFloat:1, bestStars:0, bestFishId:null, bestCatchId:null, perSpeciesFloat:{}, perSpeciesStars:{}, perSpeciesCatchId:{} }, recentCatches:[], catchHistory:[],
     collectionLog:{}, claimedChallenges:{}, challengeTiers:{},
     equippedClothing:{hat:null, shirt:null, pants:null, shoes:null, gloves:null},

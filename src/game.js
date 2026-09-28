@@ -13,7 +13,7 @@
 
 
 import { playBuySound, playCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playTrophySound, playUniqueFoundSound, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
+import { BACKGROUNDS, BASE_CAST_MS, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, TRINKET_SLOTS, backgroundById, baitById, baitForFish, clothingItems, consumableById, equipmentById, equipmentForFish, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -545,6 +545,72 @@ export function trinketNoBaitChance(){
     if(item && item.noBaitChance) chance = Math.max(chance, item.noBaitChance);
   });
   return Math.min(chance, 0.95);
+}
+
+// ---------- Fishing Shack (see SHACK_TIERS/SHACK_DECOR in data.js) ----------
+// Purely cosmetic coin sink: a decoratable room, separate from anything that
+// affects actual fishing. state.shack.tier is a straight coin+level-gated
+// upgrade path (same shape as UPGRADES); decor purchases persist across tiers
+// (buyShackDecor never checks tier again once owned -- only tierRequired at
+// purchase time); trophy mounts are populated from the player's own Trophy
+// Room catches rather than bought, and store a snapshot (fishId/stars/float)
+// so a mount survives even if the original inventory entry is later sold.
+export function shackTier(){ return (state.shack && state.shack.tier) || 0; }
+export function shackMountSlotCount(){ return shackTierInfo(shackTier()).mountSlots; }
+export function buyShackTier(){
+  var next = nextShackTier(shackTier());
+  if(!next || playerLevel() < next.level || state.coins < next.cost) return false;
+  state.coins -= next.cost;
+  state.shack.tier = next.tier;
+  saveState(); updateHud();
+  playBuySound();
+  showToast('Moved into the ' + next.name + '!');
+  return true;
+}
+export function ownsShackDecor(itemId){ return !!(state.shack.owned && state.shack.owned[itemId]); }
+export function buyShackDecor(itemId){
+  var item = shackDecorById(itemId);
+  if(!item || shackTier() < item.tierRequired) return false;
+  if(ownsShackDecor(itemId)) return true;
+  if(state.coins < item.cost) return false;
+  state.coins -= item.cost;
+  if(!state.shack.owned) state.shack.owned = {};
+  state.shack.owned[itemId] = true;
+  saveState(); updateHud();
+  playBuySound();
+  showToast('Bought ' + item.name + '.');
+  return true;
+}
+export function equipShackDecor(itemId){
+  var item = shackDecorById(itemId);
+  if(!item || !ownsShackDecor(itemId)) return false;
+  state.shack.decor[item.slot] = itemId;
+  saveState();
+  return true;
+}
+export function unequipShackDecorSlot(slot){
+  if(state.shack.decor) state.shack.decor[slot] = null;
+  saveState();
+}
+export function shackMounts(){
+  if(!state.shack.mounts) state.shack.mounts = [];
+  return state.shack.mounts;
+}
+export function mountableTrophies(){
+  return state.inventory.filter(function(e){ return e.status === 'trophy'; });
+}
+export function mountTrophyInSlot(slotIndex, catchId){
+  var entry = state.inventory.find(function(e){ return e.catchId === catchId && e.status === 'trophy'; });
+  if(!entry || slotIndex < 0 || slotIndex >= shackMountSlotCount()) return false;
+  var mounts = shackMounts();
+  mounts[slotIndex] = {catchId: entry.catchId, fishId: entry.fishId, stars: starsForEntry(entry), float: floatForEntry(entry)};
+  saveState();
+  return true;
+}
+export function unmountShackSlot(slotIndex){
+  var mounts = shackMounts();
+  mounts[slotIndex] = null;
+  saveState();
 }
 
 // ---------- Consumables (quick-use row on the dock) ----------

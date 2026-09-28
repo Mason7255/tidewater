@@ -317,6 +317,71 @@ export var UPGRADES = [
 ];
 export function upgradeById(id){ for(var i=0;i<UPGRADES.length;i++){ if(UPGRADES[i].id===id) return UPGRADES[i]; } return null; }
 
+// ---------- Fishing Shack ----------
+// A pure cosmetic coin sink: a decoratable room (see screen-shack in
+// index.html / renderShack() in screens.js) separate from anything that
+// affects fishing itself. state.shack holds { tier, decor:{slot:itemId},
+// owned:{itemId:true}, mounts:[{catchId,fishId,stars,float}] }.
+//
+// Tiers are a straight coin-and-level-gated upgrade path, same pattern as
+// UPGRADES above -- state.shack.tier tracks how far you've gotten, and
+// nextShackTier()/buyShackTier() (game.js) handle moving up one at a time.
+// Decor purchases carry over between tiers (nothing is lost moving up), and
+// each tier also unlocks a few new tier-exclusive options per slot on top of
+// what's already available -- see SHACK_DECOR's tierRequired field.
+export var SHACK_TIERS = [
+  {tier:0, name:'Old Shack', level:1, cost:0, mountSlots:1, wallColor:'#4b3a2c', floorColor:'#6b4a30', flavor:"Leans a little in the wind, but it's yours."},
+  {tier:1, name:'Fixer-Upper Cabin', level:10, cost:2000, mountSlots:1, wallColor:'#5a4632', floorColor:'#7a5636', flavor:'New boards over the old ones. Still smells like the bay.'},
+  {tier:2, name:'Cozy Cottage', level:30, cost:12000, mountSlots:2, wallColor:'#6b5a48', floorColor:'#8a6540', flavor:'Actually holds heat now.'},
+  {tier:3, name:"Angler's Lodge", level:50, cost:60000, mountSlots:2, wallColor:'#7a6350', floorColor:'#9a7248', flavor:'Big enough for the whole tackle collection.'},
+  {tier:4, name:'Waterfront Manor', level:70, cost:250000, mountSlots:3, wallColor:'#8a7360', floorColor:'#a8845a', flavor:'Neighbors ask what you do for a living.'},
+  {tier:5, name:"The Captain's Lake House", level:90, cost:1000000, mountSlots:4, wallColor:'#9c8770', floorColor:'#c49a68', flavor:'Retirement, but you never actually retired.'}
+];
+export function shackTierInfo(tier){ return SHACK_TIERS[Math.max(0, Math.min(SHACK_TIERS.length-1, tier||0))]; }
+export function nextShackTier(tier){ return SHACK_TIERS[(tier||0)+1] || null; }
+
+// Five furniture slots (rug/sofa/curtains/wallArt/table) plus a separate
+// trophy-mount system (not purchased -- populated from your own Trophy Room
+// catches, see mountTrophyInSlot() in game.js). tierRequired gates when an
+// item becomes purchasable, matching whatever SHACK_TIERS.tier the player
+// has reached; owning an item is permanent once bought, same as clothing.
+export var SHACK_DECOR = [
+  // Rugs
+  {id:'rug_frayed', slot:'rug', tierRequired:0, cost:80, name:'Frayed Rug', color:'#7a4a3a', flavor:'Older than the dock posts.'},
+  {id:'rug_stripe', slot:'rug', tierRequired:0, cost:150, name:'Striped Rag Rug', color:'#8a6a3a', flavor:'Hand-braided, mismatched colors, somehow works.'},
+  {id:'rug_anchor', slot:'rug', tierRequired:0, cost:300, name:'Anchor-Print Rug', color:'#3f5566', flavor:'A little on the nose, but comfortable.'},
+  {id:'rug_persian', slot:'rug', tierRequired:2, cost:5000, name:'Imported Rug', color:'#7a2a3a', flavor:'Where did this even come from.'},
+  {id:'rug_fur', slot:'rug', tierRequired:3, cost:20000, name:'Faux Fur Rug', color:'#e8e0d0', flavor:"Doesn't match anything else. Doesn't matter."},
+  {id:'rug_gold', slot:'rug', tierRequired:5, cost:150000, name:'Gilded Rug', color:'#d9a441', flavor:'Excessive. Perfect.'},
+  // Sofas
+  {id:'sofa_bench', slot:'sofa', tierRequired:0, cost:120, name:'Wooden Bench', color:'#6b4a30', flavor:'A plank with delusions of furniture.'},
+  {id:'sofa_plaid', slot:'sofa', tierRequired:0, cost:250, name:'Plaid Couch', color:'#5a3a2a', flavor:'Smells like a campfire. In a good way.'},
+  {id:'sofa_leather', slot:'sofa', tierRequired:1, cost:1500, name:'Cracked Leather Sofa', color:'#4a2a1a', flavor:'Found at an estate sale. No questions asked.'},
+  {id:'sofa_velvet', slot:'sofa', tierRequired:3, cost:25000, name:'Velvet Sofa', color:'#5a2a4a', flavor:'You have to ask people to take their boots off now.'},
+  {id:'sofa_leviathan', slot:'sofa', tierRequired:5, cost:200000, name:'Leviathan-Hide Sofa', color:'#2a4a4a', flavor:"Don't ask what it's made of."},
+  // Curtains (shared across both windows in the room)
+  {id:'curtains_burlap', slot:'curtains', tierRequired:0, cost:60, name:'Burlap Curtains', color:'#8a7250', flavor:'Keeps the glare off the water.'},
+  {id:'curtains_check', slot:'curtains', tierRequired:0, cost:140, name:'Checkered Curtains', color:'#9a3a3a', flavor:'Very kitchen-table energy.'},
+  {id:'curtains_navy', slot:'curtains', tierRequired:1, cost:900, name:'Navy Canvas Curtains', color:'#2a3a5a', flavor:'Actual boat sailcloth. Repurposed, obviously.'},
+  {id:'curtains_lace', slot:'curtains', tierRequired:3, cost:15000, name:'Lace Curtains', color:'#e8e4d8', flavor:"Somebody's grandmother would approve."},
+  {id:'curtains_velvet', slot:'curtains', tierRequired:5, cost:120000, name:'Velvet Drapes', color:'#5a1a2a', flavor:'Blocks out the sunrise. Worth it.'},
+  // Wall Art
+  {id:'wallart_map', slot:'wallArt', tierRequired:0, cost:100, name:'Old Fishing Map', color:'#c9b98a', flavor:"Half the labels don't exist anymore."},
+  {id:'wallart_knot', slot:'wallArt', tierRequired:0, cost:180, name:'Framed Knot Guide', color:'#b09060', flavor:'You still only know three of them.'},
+  {id:'wallart_painting', slot:'wallArt', tierRequired:1, cost:1200, name:'Sunset Painting', color:'#d97a4a', flavor:'Bought it because the colors matched the room.'},
+  {id:'wallart_mounted_net', slot:'wallArt', tierRequired:2, cost:8000, name:'Mounted Net Display', color:'#7a8a8a', flavor:'The net that started it all. Retired with honors.'},
+  {id:'wallart_portrait', slot:'wallArt', tierRequired:4, cost:80000, name:'Oil Portrait (of You, Fishing)', color:'#6a4a2a', flavor:'Commissioned. Slightly too flattering.'},
+  // Table
+  {id:'table_crate', slot:'table', tierRequired:0, cost:90, name:'Crate Table', color:'#8a6a40', flavor:'Still has the shipping stamp on the side.'},
+  {id:'table_spool', slot:'table', tierRequired:0, cost:160, name:'Cable Spool Table', color:'#7a5a3a', flavor:'Classic. Everyone had one of these once.'},
+  {id:'table_oak', slot:'table', tierRequired:1, cost:1100, name:'Oak Table', color:'#5a3a20', flavor:"Sturdy enough to clean a fish on. Please don't."},
+  {id:'table_glass', slot:'table', tierRequired:3, cost:18000, name:'Glass-Top Table', color:'#a8c8cc', flavor:'One wrong cast and this is over.'},
+  {id:'table_mahogany', slot:'table', tierRequired:5, cost:140000, name:'Mahogany Table', color:'#3a1e14', flavor:'Somehow still gets used as a bait station.'}
+];
+export var SHACK_DECOR_SLOTS = ['rug','sofa','curtains','wallArt','table'];
+export function shackDecorForSlot(slot){ return SHACK_DECOR.filter(function(d){ return d.slot===slot; }); }
+export function shackDecorById(id){ for(var i=0;i<SHACK_DECOR.length;i++){ if(SHACK_DECOR[i].id===id) return SHACK_DECOR[i]; } return null; }
+
 // ---------- Consumables ----------
 // Repeatable coin sink, unlike the one-time UPGRADES above: bought in packs
 // from the shop's Consumables tab, then quick-used right from the dock scene

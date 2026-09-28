@@ -117,6 +117,7 @@
       <button class="rail-btn" id="railInventoryBtn" type="button">Inventory</button>
       <button class="rail-btn" id="viewShopBtn" type="button">Shop</button>
       <button class="rail-btn" id="viewUpgradesBtn" type="button">Upgrades</button>
+      <button class="rail-btn" id="viewShackBtn" type="button">Fishing Shack</button>
       <button class="rail-btn" id="viewEquipmentBtn" type="button">Equipment</button>
       <button class="rail-btn" id="viewTrophyBtn" type="button">Trophies</button>
       <button class="rail-btn" id="viewRecordsBtn" type="button">Records</button>
@@ -291,6 +292,43 @@
     <p class="intro-text" style="margin-bottom:0;">Spend coins on permanent upgrades to how you fish.</p>
     <div id="upgradesList" style="margin-top:16px;"></div>
   </section>
+
+  <!-- FISHING SHACK -->
+  <section class="screen panel" id="screen-shack">
+    <button class="nav-back" id="backFromShack">✕ Close</button>
+    <h2 id="shackTierName">Old Shack</h2>
+    <p class="intro-text" id="shackTierFlavor" style="margin-bottom:14px;">Leans a little in the wind, but it's yours.</p>
+    <div class="shack-room" id="shackRoom">
+      <div class="shack-wall"></div>
+      <div class="shack-floor"></div>
+      <div class="shack-mounts" id="shackMounts"></div>
+      <div class="shack-slot shack-slot-curtains left" id="shackSlot_curtainsLeft"></div>
+      <div class="shack-slot shack-slot-curtains right" id="shackSlot_curtainsRight"></div>
+      <div class="shack-slot shack-slot-wallart" id="shackSlot_wallArt"></div>
+      <div class="shack-slot shack-slot-sofa" id="shackSlot_sofa"></div>
+      <div class="shack-slot shack-slot-table" id="shackSlot_table"></div>
+      <div class="shack-slot shack-slot-rug" id="shackSlot_rug"></div>
+      <div class="shack-player-wrap" id="shackPlayerWrap"></div>
+    </div>
+    <div class="shop-item" id="shackTierCard" style="margin-top:14px;"></div>
+    <div class="shop-tabs" role="tablist" aria-label="Decorate category" style="margin-top:18px;">
+      <button class="shop-tab active" id="shackTab_rug" type="button" role="tab" aria-selected="true">Rug</button>
+      <button class="shop-tab" id="shackTab_sofa" type="button" role="tab" aria-selected="false">Sofa</button>
+      <button class="shop-tab" id="shackTab_curtains" type="button" role="tab" aria-selected="false">Curtains</button>
+      <button class="shop-tab" id="shackTab_wallArt" type="button" role="tab" aria-selected="false">Wall Art</button>
+      <button class="shop-tab" id="shackTab_table" type="button" role="tab" aria-selected="false">Table</button>
+    </div>
+    <div id="shackDecorList"></div>
+  </section>
+
+  <!-- FISHING SHACK: trophy mount picker -->
+  <div class="catch-inspect" id="shackMountModal">
+    <div class="catch-inspect-card">
+      <h3>Mount a trophy</h3>
+      <div id="shackMountList" style="display:grid; gap:8px; margin:14px 0; max-height:300px; overflow:auto;"></div>
+      <button class="btn-secondary" id="shackMountModalClose">Close</button>
+    </div>
+  </div>
 
   <!-- BACKGROUNDS -->
   <section class="screen panel" id="screen-backgrounds">
