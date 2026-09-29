@@ -791,17 +791,22 @@ export function renderOwnedEquipment(){
   });
 }
 
+// A piece almost always carries just one bonus field, but the Gilded chest
+// set (data.js) is the one exception -- it stacks speedBonus AND sellBonus
+// on every single piece -- so this collects every bonus field present
+// instead of stopping at the first match, and joins them for display.
 function clothingBonusText(item){
-  if(item.speedBonus) return '+'+Math.round(item.speedBonus*100)+'% fishing speed.';
-  if(item.luckBonus) return '+'+Math.round(item.luckBonus*100)+'% catch luck.';
-  if(item.sellBonus) return '+'+Math.round(item.sellBonus*100)+'% sell price.';
-  if(item.xpBonus) return '+'+Math.round(item.xpBonus*100)+'% fishing XP.';
-  if(item.proficiencyBonus) return '+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain.';
-  if(item.doubleCatchBonus) return '+'+Math.round(item.doubleCatchBonus*100)+'% chance to catch 2 fish at once.';
-  if(item.bigOneLuckBonus) return '+'+Math.round(item.bigOneLuckBonus*100)+'% chance to trigger a Big One encounter.';
-  if(item.mythicLuckBonus) return '+'+Math.round(item.mythicLuckBonus*100)+'% chance to find mythics.';
-  if(item.uniqueLuckBonus) return '+'+Math.round(item.uniqueLuckBonus*100)+'% chance to find that species\' unique.';
-  return 'No bonus yet.';
+  var bits = [];
+  if(item.speedBonus) bits.push('+'+Math.round(item.speedBonus*100)+'% fishing speed');
+  if(item.luckBonus) bits.push('+'+Math.round(item.luckBonus*100)+'% catch luck');
+  if(item.sellBonus) bits.push('+'+Math.round(item.sellBonus*100)+'% sell price');
+  if(item.xpBonus) bits.push('+'+Math.round(item.xpBonus*100)+'% fishing XP');
+  if(item.proficiencyBonus) bits.push('+'+Math.round(item.proficiencyBonus*100)+'% proficiency gain');
+  if(item.doubleCatchBonus) bits.push('+'+Math.round(item.doubleCatchBonus*100)+'% chance to catch 2 fish at once');
+  if(item.bigOneLuckBonus) bits.push('+'+Math.round(item.bigOneLuckBonus*100)+'% chance to trigger a Big One encounter');
+  if(item.mythicLuckBonus) bits.push('+'+Math.round(item.mythicLuckBonus*100)+'% chance to find mythics');
+  if(item.uniqueLuckBonus) bits.push('+'+Math.round(item.uniqueLuckBonus*100)+'% chance to find that species\' unique');
+  return bits.length ? bits.join(', ')+'.' : 'No bonus yet.';
 }
 export function renderClothing(){
   var list=document.getElementById('clothingList'); list.innerHTML='';

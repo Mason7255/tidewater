@@ -440,13 +440,21 @@ FISH.forEach(function(fish){
 // MYTHIC_LOG_ITEMS. fishId:null and no chance field (chestReward:true marks
 // them as chest-only, never a direct catch roll); slot/clothing:true is all
 // equipClothing()/totalClothingXxxBonus() actually key off, so a null fishId
-// works exactly like any other clothing piece once owned.
+// works exactly like any other clothing piece once owned. Unlike every other
+// set, each Gilded piece carries TWO bonus fields at once instead of one --
+// justified by how much harder this set is to complete than a normal one
+// (each piece is a random chest reward competing with 5 other clothing
+// pieces AND 5 trinkets, instead of a guaranteed per-species drop): +10%
+// fishing speed and +20% sell price per piece, for a full-set +50%
+// speed / +100% sell price.
+var GILDED_SPEED_BONUS_PER_PIECE = 0.1; // 5 pieces => 50% total when a full set is equipped
+var GILDED_SELL_BONUS_PER_PIECE = 0.2; // 5 pieces => 100% total when a full set is equipped
 [
-  {slot:'hat', id:'golden_helmet', name:'Gilded Helmet', icon:'🪖', flavor:'Polished to a mirror shine. Mostly ceremonial.'},
-  {slot:'shirt', id:'golden_shirt', name:'Gilded Shirt', icon:'👕', flavor:'Not exactly practical for wading, but it sure looks the part.'},
-  {slot:'pants', id:'golden_legs', name:'Gilded Legs', icon:'👖', flavor:'Stiff, heavy, and worth more than the boat.'},
-  {slot:'shoes', id:'golden_shoes', name:'Gilded Shoes', icon:'👞', flavor:'Squeaky clean. They will not stay that way at the dock.'},
-  {slot:'gloves', id:'golden_gloves', name:'Gilded Gloves', icon:'🧤', flavor:'Every knot you tie in these feels a little more official.'}
+  {slot:'hat', id:'golden_helmet', name:'Gilded Helmet', icon:'🪖', flavor:'Polished to a mirror shine. Mostly ceremonial.', speedBonus:GILDED_SPEED_BONUS_PER_PIECE, sellBonus:GILDED_SELL_BONUS_PER_PIECE},
+  {slot:'shirt', id:'golden_shirt', name:'Gilded Shirt', icon:'👕', flavor:'Not exactly practical for wading, but it sure looks the part.', speedBonus:GILDED_SPEED_BONUS_PER_PIECE, sellBonus:GILDED_SELL_BONUS_PER_PIECE},
+  {slot:'pants', id:'golden_legs', name:'Gilded Legs', icon:'👖', flavor:'Stiff, heavy, and worth more than the boat.', speedBonus:GILDED_SPEED_BONUS_PER_PIECE, sellBonus:GILDED_SELL_BONUS_PER_PIECE},
+  {slot:'shoes', id:'golden_shoes', name:'Gilded Shoes', icon:'👞', flavor:'Squeaky clean. They will not stay that way at the dock.', speedBonus:GILDED_SPEED_BONUS_PER_PIECE, sellBonus:GILDED_SELL_BONUS_PER_PIECE},
+  {slot:'gloves', id:'golden_gloves', name:'Gilded Gloves', icon:'🧤', flavor:'Every knot you tie in these feels a little more official.', speedBonus:GILDED_SPEED_BONUS_PER_PIECE, sellBonus:GILDED_SELL_BONUS_PER_PIECE}
 ].forEach(function(piece){
   MYTHIC_LOG_ITEMS.push(Object.assign({fishId:null, chestGroup:true, chestReward:true, clothing:true}, piece));
 });

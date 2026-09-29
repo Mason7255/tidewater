@@ -291,7 +291,9 @@ export function totalClothingSellBonus(){
     var item = clothingItems().filter(function(c){ return c.id===id; })[0];
     if(item) total += item.sellBonus || 0;
   });
-  return Math.min(total, 0.75); // safety ceiling as more sets get added later
+  // Ceiling raised from 0.75 -- the Gilded set alone is worth +100% (see
+  // data.js), which that old cap would have silently clipped down to +75%.
+  return Math.min(total, 2); // safety ceiling as more sets get added later
 }
 // Rusty Tin Can (the Perch unique): stacks additively with the Perch
 // clothing set's own sellBonus, same relationship as speed bonuses stacking
