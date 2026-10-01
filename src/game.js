@@ -13,7 +13,7 @@
 
 
 import { playBigOneHitSound, playBigOneMissSound, playBigOneMissTickSound, playBigOneWinSound, playBuySound, playCatchSound, playDoubleCatchSound, playLevelSound, playMythicFoundSound, playSellSound, playShrimpSwarmStartSound, playShrimpSwarmTagSound, playShrimpSwarmWinSound, playTrophySound, playUniqueFoundSound, startBigOneSirenLoop, stopBigOneSirenLoop, startWaterAmbience } from './audio.js';
-import { BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, goldenChestRewardItems, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
+import { ANCHOVY_SCHOOL_CHANCE, ANCHOVY_SCHOOL_CONFIG, BACKGROUNDS, BASE_CAST_MS, BIG_ONE_CHANCE, BIG_ONE_UNIQUE_BONUS_CHANCE, CLOTHING_SLOTS, CONSUMABLES, FISH, HATS, LEVEL_CAP, NO_BAIT_CAST_MS, OUTFIT_COLORS, SHACK_TIERS, SHRIMP_SWARM_BUFF, SHRIMP_SWARM_CHANCE, SHRIMP_SWARM_CONFIG, TRINKET_SLOTS, backgroundById, baitById, baitForFish, bigOneDifficultyForFish, bigOneLogItemForFish, clothingItems, consumableById, equipmentById, equipmentForFish, goldenChestRewardItems, isBackgroundUnlocked, levelForXp, logItemForFish, mythicLogItemsForFish, nextShackTier, shackDecorById, shackTierInfo, trinketById, trinketItems, universalLogItems, xpTable } from './data.js';
 import { enterDock } from './menu.js';
 import { renderPlayer, showCoinGain, showToast, updatePlayerBuffAccessories } from './render.js';
 import { renderChallenges, renderInventoryList, renderLog, renderSkills, renderTrophyGrid } from './screens.js';
@@ -1647,8 +1647,12 @@ export function beginSingleCast(sessionId){
     // Species-specific for now (fish.id === 'shrimp') -- future species get
     // their own dedicated trigger the same way once their minigame exists.
     var triggerSwarm = !triggerBigOne && !swarmActive && fish.id === 'shrimp' && Math.random() < SHRIMP_SWARM_CHANCE;
+    // Anchovy School: same pattern as Shrimp Swarm, just for anchovies --
+    // mutually exclusive with Big One/Swarm by construction, since a cast
+    // can only be one fish's species at a time.
+    var triggerAnchovySchool = !triggerBigOne && !triggerSwarm && !schoolActive && fish.id === 'anchovies' && Math.random() < ANCHOVY_SCHOOL_CHANCE;
 
-    if(triggerBigOne || triggerSwarm || result.stars >= 4){
+    if(triggerBigOne || triggerSwarm || triggerAnchovySchool || result.stars >= 4){
       autoFishing = false;
       fishingSessionId++;
       activeCastId++;
@@ -1659,6 +1663,8 @@ export function beginSingleCast(sessionId){
         setTimeout(function(){ beginBigOneEncounter(fish, bigOneItem, result.stars >= 4); }, 1500);
       } else if(triggerSwarm){
         setTimeout(function(){ beginShrimpSwarmEncounter(result.stars >= 4); }, 1200);
+      } else if(triggerAnchovySchool){
+        setTimeout(function(){ beginAnchovySchoolEncounter(result.stars >= 4); }, 1200);
       }
       return;
     }
@@ -2040,6 +2046,170 @@ export function startShrimpSwarmMinigame(onComplete){
 }
 
 // ---------------------------------------------------------------------------
+// Anchovy School: a per-species minigame like Shrimp Swarm, but with no
+// win/lose threshold -- there's nothing to "clear", every fish tapped is
+// simply kept. Each tap runs the real catch pipeline (grantFish(), below)
+// instead of granting a flat buff, so a lucky tap can land a real quality
+// roll, XP, or even the Anchovy collection-log item/trinket, same as any
+// other anchovy catch. Fishing pauses for the encounter and resumes after,
+// same reasoning as Shrimp Swarm/Big One.
+// ---------------------------------------------------------------------------
+var schoolActive = false;
+
+function beginAnchovySchoolEncounter(alsoTrophy){
+  schoolActive = true;
+  showAnchovySchoolBanner(function(){
+    startAnchovySchoolMinigame(function(caughtCount){
+      schoolActive = false;
+      resolveAnchovySchoolOutcome(caughtCount);
+      if(!alsoTrophy) startAutoFish();
+    });
+  });
+}
+// Same brief, auto-dismissing announcement treatment as Shrimp Swarm's
+// banner (see showShrimpSwarmBanner above) -- reuses the exact .swarm-banner
+// CSS, just with Anchovy's own copy/icon.
+function showAnchovySchoolBanner(onDone){
+  playShrimpSwarmStartSound();
+  var overlay = document.getElementById('schoolBanner');
+  if(!overlay){
+    overlay = document.createElement('div');
+    overlay.id = 'schoolBanner';
+    overlay.className = 'swarm-banner';
+    document.body.appendChild(overlay);
+  }
+  overlay.innerHTML =
+    '<div class="swarm-banner-card">'+
+      '<h2 class="swarm-banner-title">🐟 Anchovy School! 🐟</h2>'+
+      '<p class="swarm-banner-sub">Tap as many as you can before they scatter!</p>'+
+    '</div>';
+  requestAnimationFrame(function(){ overlay.classList.add('active'); });
+  setTimeout(function(){
+    overlay.classList.remove('active');
+    setTimeout(function(){
+      if(overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+      if(typeof onDone === 'function') onDone();
+    }, 260);
+  }, 3000);
+}
+
+function resolveAnchovySchoolOutcome(caughtCount){
+  if(!caughtCount) return; // nothing tapped -- no toast, same treatment as a Shrimp Swarm whiff
+  showToast('School scattered! Caught ' + caughtCount + ' anchov' + (caughtCount === 1 ? 'y' : 'ies') + '.');
+}
+
+export function startAnchovySchoolMinigame(onComplete){
+  var cfg = ANCHOVY_SCHOOL_CONFIG;
+  var caught = 0, live = [];
+  var startedAt = Date.now();
+  var raf = null;
+  var finished = false;
+  var anchoviesFish = fishById('anchovies');
+
+  var overlay = document.createElement('div');
+  overlay.className = 'swarm-game-overlay';
+  overlay.innerHTML = '<div class="swarm-game-hud">'+
+    '<div class="swarm-hud-pill tagged" id="schoolCaughtPill">CAUGHT 0</div>'+
+    '<div class="swarm-hud-pill timer" id="schoolTimerPill">'+ Math.ceil(cfg.durationMs/1000) +'s</div>'+
+    '</div>';
+  document.body.appendChild(overlay);
+  var caughtPill = overlay.querySelector('#schoolCaughtPill');
+  var timerPill = overlay.querySelector('#schoolTimerPill');
+
+  function updateHud(){
+    caughtPill.textContent = 'CAUGHT ' + caught;
+    var remainMs = Math.max(0, cfg.durationMs - (Date.now() - startedAt));
+    timerPill.textContent = Math.ceil(remainMs/1000) + 's';
+  }
+
+  function spawnAnchovy(){
+    var margin = 60;
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var el = document.createElement('div');
+    el.className = 'swarm-shrimp swarm-anchovy';
+    el.textContent = '🐟';
+    var entry = {
+      el: el,
+      x: margin + Math.random() * Math.max(1, vw - margin*2),
+      y: 110 + Math.random() * Math.max(1, vh - margin - 110),
+      vx: 0, vy: 0,
+      nextTurnAt: 0,
+      tagged: false
+    };
+    pickNewVelocity(entry, false);
+    el.style.left = entry.x + 'px';
+    el.style.top = entry.y + 'px';
+    overlay.appendChild(el);
+    el.addEventListener('pointerdown', function(){
+      if(entry.tagged || finished) return;
+      entry.tagged = true;
+      caught++;
+      updateHud();
+      playShrimpSwarmTagSound();
+      el.classList.add('tagged');
+      setTimeout(function(){ if(el.parentNode) el.parentNode.removeChild(el); }, 220);
+      live.splice(live.indexOf(entry), 1);
+      // The actual reward: a full, real catch, right here. isBonusCatch
+      // skips the "legendary trophy" popup mid-minigame (a lucky 4-5 star
+      // tap still gets a toast -- same treatment as Trout's double-catch
+      // bonus fish); suppressFeedback skips the per-tap catch popup/sound so
+      // rapid tapping doesn't stack ten popups on top of each other. The
+      // single "School scattered! Caught N" toast at the end (see
+      // resolveAnchovySchoolOutcome above) covers the overall result.
+      if(anchoviesFish) grantFish(anchoviesFish, null, {isBonusCatch:true, suppressFeedback:true});
+    }, {once:true});
+    live.push(entry);
+  }
+
+  // Looser, gentler drift than Shrimp's jittery dart pattern -- reads like a
+  // school moving together rather than one frantic shrimp.
+  function pickNewVelocity(entry, dart){
+    var speed = (dart ? 220 : 70) + Math.random() * (dart ? 80 : 50);
+    var angle = Math.random() * Math.PI * 2;
+    entry.vx = Math.cos(angle) * speed;
+    entry.vy = Math.sin(angle) * speed;
+    entry.nextTurnAt = Date.now() + 1100 + Math.random() * 500;
+  }
+
+  function tick(){
+    if(finished) return;
+    var now = Date.now();
+    var vw = window.innerWidth, vh = window.innerHeight;
+    var margin = 30;
+    var last = tick.lastTs || now;
+    var dt = Math.min(0.05, (now - last) / 1000);
+    tick.lastTs = now;
+    live.forEach(function(entry){
+      if(now >= entry.nextTurnAt) pickNewVelocity(entry, Math.random() < 0.25);
+      entry.x += entry.vx * dt;
+      entry.y += entry.vy * dt;
+      if(entry.x < margin){ entry.x = margin; entry.vx *= -1; }
+      if(entry.x > vw-margin){ entry.x = vw-margin; entry.vx *= -1; }
+      if(entry.y < 100){ entry.y = 100; entry.vy *= -1; }
+      if(entry.y > vh-margin){ entry.y = vh-margin; entry.vy *= -1; }
+      entry.el.style.left = entry.x + 'px';
+      entry.el.style.top = entry.y + 'px';
+    });
+    updateHud();
+    if(now - startedAt >= cfg.durationMs){ finish(); return; }
+    raf = requestAnimationFrame(tick);
+  }
+
+  function finish(){
+    if(finished) return;
+    finished = true;
+    if(raf) cancelAnimationFrame(raf);
+    if(overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    onComplete(caught);
+  }
+
+  // All spawn together, unlike Shrimp Swarm's 3 trickling waves -- reads as
+  // "a school" from the first frame instead of fish arriving over time.
+  for(var i=0;i<cfg.fishCount;i++) spawnAnchovy();
+  raf = requestAnimationFrame(tick);
+}
+
+// ---------------------------------------------------------------------------
 // TEMPORARY dev tools -- force-trigger a minigame for testing, bypassing its
 // odds entirely (and, for Big One, the "already logged" guard too). Wired up
 // from a hidden checkbox in Options (see menu.js). Remove this whole block,
@@ -2047,7 +2217,7 @@ export function startShrimpSwarmMinigame(onComplete){
 // -- same pattern as the earlier Big One dev tool that got pulled before.
 // ---------------------------------------------------------------------------
 export function forceBigOneEncounter(){
-  if(bigOneActive || swarmActive) return;
+  if(bigOneActive || swarmActive || schoolActive) return;
   var eq = currentEquipment();
   var fish = eq ? fishById(eq.fishId) : fishById('shrimp');
   var bigOneItem = fish ? bigOneLogItemForFish(fish.id) : null;
@@ -2056,8 +2226,13 @@ export function forceBigOneEncounter(){
   beginBigOneEncounter(fish, bigOneItem, false);
 }
 export function forceShrimpSwarmEncounter(){
-  if(bigOneActive || swarmActive) return;
+  if(bigOneActive || swarmActive || schoolActive) return;
   autoFishing = false; fishingSessionId++; activeCastId++; clearFishingTimer(); parkRodIdle();
   beginShrimpSwarmEncounter(false);
+}
+export function forceAnchovySchoolEncounter(){
+  if(bigOneActive || swarmActive || schoolActive) return;
+  autoFishing = false; fishingSessionId++; activeCastId++; clearFishingTimer(); parkRodIdle();
+  beginAnchovySchoolEncounter(false);
 }
 

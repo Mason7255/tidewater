@@ -7,7 +7,7 @@
 
 import { audioMaster, ensureAudio, playClickSound, soundCheck, startWaterAmbience, stopWaterAmbience } from './audio.js';
 import { OUTFIT_COLORS, makeBaitCounts, makeConsumableCounts, startingOwnedEquipment } from './data.js';
-import { animationsEnabled, applyBackground, closeCatchInspect, forceBigOneEncounter, forceShrimpSwarmEncounter, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
+import { animationsEnabled, applyBackground, closeCatchInspect, forceAnchovySchoolEncounter, forceBigOneEncounter, forceShrimpSwarmEncounter, hatRow, nameInput, renderInventoryStrip, setAnimationsEnabled, startAutoFish, startBtn, stopAutoFish, swatchRow, updateGearCaption, updateHud } from './game.js';
 import { renderPlayer, showScreen, showToast } from './render.js';
 import { SLOT_COUNT, activeSlot, deleteSlotData, escapeHtml, formatSavedAt, getSlotInfo, loadSlot, saveState, saveToSlot, setActiveSlot, setCatchIdCounter, setState, state } from './state.js';
 
@@ -97,6 +97,7 @@ animationsCheck.addEventListener('change', function(){ setAnimationsEnabled(anim
   var devToolsRow = document.getElementById('devToolsRow');
   var forceBigOneBtn = document.getElementById('forceBigOneBtn');
   var forceShrimpSwarmBtn = document.getElementById('forceShrimpSwarmBtn');
+  var forceAnchovySchoolBtn = document.getElementById('forceAnchovySchoolBtn');
   if(!devModeCheck || !devToolsRow) return;
   devModeCheck.addEventListener('change', function(){
     devToolsRow.style.display = devModeCheck.checked ? '' : 'none';
@@ -108,6 +109,10 @@ animationsCheck.addEventListener('change', function(){ setAnimationsEnabled(anim
   if(forceShrimpSwarmBtn) forceShrimpSwarmBtn.addEventListener('click', function(){
     showScreen('screen-dock');
     forceShrimpSwarmEncounter();
+  });
+  if(forceAnchovySchoolBtn) forceAnchovySchoolBtn.addEventListener('click', function(){
+    showScreen('screen-dock');
+    forceAnchovySchoolEncounter();
   });
 })();
 

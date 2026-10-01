@@ -437,6 +437,11 @@
   @keyframes swarmShrimpPop{ 0%{transform:scale(0.3); opacity:0;} 100%{transform:scale(1); opacity:1;} }
   @keyframes swarmShrimpTag{ 0%{transform:scale(1); opacity:1;} 100%{transform:scale(1.6); opacity:0;} }
   @media (prefers-reduced-motion: reduce){ .swarm-shrimp{ animation:none; } }
+  /* Anchovy School minigame: reuses every .swarm-shrimp rule above as-is
+     (same tap target size/position/pop/tag animations) via the shared
+     class on the element -- .swarm-anchovy only exists as a hook in case
+     the two ever need to look different later. */
+  .swarm-anchovy{ font-size:28px; }
   .cast-lure{ position:absolute; bottom:92px; left:50%; width:6px; height:6px; border-radius:50%; background:var(--gold); opacity:0; z-index:5; pointer-events:none; }
   .cast-lure.flying{ animation:castFly .5s cubic-bezier(.3,.6,.4,1) forwards; }
   .cast-lure.parked{ left:calc(50% + 72px); bottom:64px; opacity:1; }
@@ -595,6 +600,16 @@
   }
   @keyframes celestialShift{ 0%{ background-position:0% 0%; } 50%{ background-position:0% 100%; } 100%{ background-position:0% 0%; } }
   @media (prefers-reduced-motion: reduce){ .pole-celestial{ animation:none; background-position:0% 40%; } }
+  /* The equipped rod's generic glossy-highlight overlay (.player-rod.gear-pole::after,
+     above) is a flat 55%-opacity white rectangle covering the ENTIRE rod --
+     fine as a shine on a single flat pole color, but at that strength it
+     washes the Celestial Rod's whole black/purple/teal gradient into a pale,
+     nearly colorless streak, which is why it didn't match the rich, dark
+     look of its Customize tile (that tile only ever had a thin 2px
+     box-shadow highlight, never a full overlay). Cut way down just for this
+     one rod so the gradient's actual colors show through while still
+     keeping a touch of shine. */
+  .player-rod.gear-pole.pole-celestial::after{ background:rgba(255,255,255,.12); }
   .shop-icon{ width:46px; height:46px; border-radius:12px; flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:22px; background:rgba(217,164,65,0.12); }
   .shop-body{ flex:1 1 auto; min-width:0; }
   .shop-title{ font-weight:800; font-size:14.5px; }

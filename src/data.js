@@ -662,6 +662,20 @@ export var SHRIMP_SWARM_BUFF = {
   flavor: 'Every catch is worth ten times as much while this lasts.'
 };
 
+// ---------------------------------------------------------------------------
+// Anchovy School: a per-species minigame like Shrimp Swarm (same rough odds,
+// same "fishing pauses for it" treatment), but with no win/lose threshold --
+// every fish tapped is kept, and each one runs through the real catch
+// pipeline (quality roll, XP, a shot at the Anchovy collection-log
+// item/trinket) instead of granting a flat buff. See
+// startAnchovySchoolMinigame()/beginAnchovySchoolEncounter() in game.js.
+// ---------------------------------------------------------------------------
+export var ANCHOVY_SCHOOL_CHANCE = 1/1000;
+export var ANCHOVY_SCHOOL_CONFIG = {
+  durationMs: 9000,
+  fishCount: 14 // all spawn together, unlike Shrimp Swarm's 3 waves -- reads as "a school", not a trickle
+};
+
 // Challenges are tiered. Claiming one removes it and immediately advances that
 // challenge family to its next target. When the final tier is claimed, that
 // challenge family disappears permanently.
