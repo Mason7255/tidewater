@@ -226,16 +226,27 @@ export var COLLECTION_LOG_ITEMS = [
   // Lobster set a dedicated unique-luck identity to match; every other
   // species' unique also carries that species' own clothing-set stat.
   {id:'lobster_claw', fishId:'lobster', name:'Carved Lobster Claw', icon:'🦞', chance:0.0002, flavor:'A strange keepsake from an old fishing boat. It seems to draw out one-of-a-kind things.', trinket:true, uniqueLuckBonus:0.35},
-  {id:'bass_lure', fishId:'bass', name:'Vintage Bass Lure', icon:'🪝', chance:0.0002, flavor:'Paint chipped, hooks dulled, story unknown.', trinket:true, noBaitChance:0.5},
-  {id:'sturgeon_tag', fishId:'sturgeon', name:'Old Sturgeon Tag', icon:'🏷️', chance:0.0002, flavor:'A faded research tag from years ago.', trinket:true},
-  {id:'koi_coin', fishId:'koi', name:'Koi Collector Coin', icon:'🪙', chance:0.0002, flavor:'A polished token stamped with a koi.', trinket:true},
-  {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial.', trinket:true},
-  {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm.', trinket:true},
-  {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater.', trinket:true},
-  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north.', trinket:true, speedBonus:0.25},
-  {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep.', trinket:true},
-  {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator.', trinket:true},
-  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it.", trinket:true},
+  // Used to carry noBaitChance (50% chance a cast used no bait) -- moved off
+  // to give the Bass set a dedicated instant-catch identity to match; every
+  // other species' unique also carries that species' own clothing-set stat.
+  {id:'bass_lure', fishId:'bass', name:'Vintage Bass Lure', icon:'🪝', chance:0.0002, flavor:'Paint chipped, hooks dulled, story unknown. Something about it still strikes fast.', trinket:true, instantCatchBonus:0.25},
+  // All 9 of these (Sturgeon through Leviathan) reuse their matching
+  // clothing set's own stat, same as every earlier species' unique -- see
+  // the CLOTHING_*_BONUS_PER_PIECE comments above for the paired set each
+  // one echoes. Sized to equal that set's full-set total, same pattern as
+  // the Bass Lure.
+  {id:'sturgeon_tag', fishId:'sturgeon', name:'Old Sturgeon Tag', icon:'🏷️', chance:0.0002, flavor:'A faded research tag from years ago. Whoever tagged this one learned something.', trinket:true, proficiencyBonus:0.35},
+  {id:'koi_coin', fishId:'koi', name:'Koi Collector Coin', icon:'🪙', chance:0.0002, flavor:'A polished token stamped with a koi. Collectors pay well for these.', trinket:true, sellBonus:0.25},
+  {id:'squid_ink', fishId:'squid', name:'Ink Vial', icon:'🧪', chance:0.0002, flavor:'Dark ink sealed in an old glass vial. Something about it draws a second bite.', trinket:true, doubleCatchBonus:0.25},
+  {id:'octopus_charm', fishId:'octopus', name:'Octopus Charm', icon:'🧿', chance:0.0002, flavor:'Eight tiny arms carved into a weathered charm. You feel ready for a real fight.', trinket:true, bigOneLuckBonus:0.75},
+  {id:'eel_scale', fishId:'eel', name:'Eel Scale Charm', icon:'🧿', chance:0.0002, flavor:'A strange charm worn smooth by years underwater. You learn faster wearing it.', trinket:true, xpBonus:0.45},
+  // Used to carry speedBonus (+25% fishing speed) -- swapped to catch-quality
+  // luck to match the Marlin set's new stat (speed moved to the Leviathan
+  // set instead, as the roster's final, biggest number).
+  {id:'captains_compass', fishId:'marlin', name:"Captain's Compass", icon:'🧭', chance:0.0002, flavor:'Still points somewhere. Just maybe not north. Every catch feels a little luckier since you started carrying it.', trinket:true, luckBonus:0.3},
+  {id:'dragonfang', fishId:'dragonfish', name:'Dragonfang Fragment', icon:'🦷', chance:0.0002, flavor:'A tiny fragment from something that should not be this deep. It seems to draw out rarer things.', trinket:true, mythicLuckBonus:0.65},
+  {id:'megalodon_tooth', fishId:'megalodon', name:'Megalodon Tooth', icon:'🦷', chance:0.0002, flavor:'A huge fossilized tooth from an ancient predator. One-of-a-kind, and it seems to know where to find more.', trinket:true, uniqueLuckBonus:0.7},
+  {id:'leviathan_scale', fishId:'leviathan', name:'Leviathan Scale', icon:'🪽', chance:0.0002, flavor:"Bigger than your hand. You don't want to know what shed it. You cast faster just holding it.", trinket:true, speedBonus:0.4},
   // Not tied to any single species (fishId:null) -- every cast, from any
   // fish, gets a shot at this one. logItemForFish() only ever matches by an
   // exact fishId string, so a null fishId here can never collide with a
@@ -307,13 +318,26 @@ export var CLOTHING_SLOTS = ['hat','shirt','pants','shoes','gloves'];
 //   uniqueLuckBonus -- relative multiplier on the chance of finding that
 //     species' own one-of-a-kind collection log item
 //     (totalClothingUniqueLuckBonus()/grantFish(), game.js).
+//   instantCatchBonus -- flat chance for a cast to resolve immediately
+//     instead of waiting out its normal cast time
+//     (totalClothingInstantCatchBonus()/the cast-start handler, game.js) --
+//     rolled once per cast, right after the duration is computed; doesn't
+//     change anything else about that catch (quality, drops, XP all roll
+//     exactly as normal), just skips the wait.
 // Per-piece magnitude has climbed with each new set so far (2% luck, then 3%
 // sell/xp, then 5% proficiency, then 3% double-catch, then 6-8% big
-// one/mythic/unique) -- there's no rule that later sets have to match
-// earlier ones, they just need to feel like a meaningful step up. Add a
-// fish's id here (and a matching entry in CLOTHING_SETS) to extend clothing
-// to it.
-var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp', 'trout', 'catfish', 'crab', 'lobster'];
+// one/mythic/unique, then 5% instant-catch) -- there's no rule that later
+// sets have to match earlier ones, they just need to feel like a meaningful
+// step up. Add a fish's id here (and a matching entry in CLOTHING_SETS) to
+// extend clothing to it.
+//
+// Sturgeon through Leviathan (the last 9) deliberately do NOT introduce any
+// new bonus fields -- each one reuses a stat an earlier set already has, just
+// at a bigger per-piece number, so these late-game sets feel like a real
+// step up without needing their own new mechanic. See each
+// CLOTHING_*_BONUS_PER_PIECE constant's comment below for which earlier set
+// it's paired with and by how much it beats it.
+var CLOTHING_FISH_IDS = ['shrimp', 'anchovies', 'perch', 'bluegill', 'carp', 'trout', 'catfish', 'crab', 'lobster', 'bass', 'sturgeon', 'koi', 'squid', 'octopus', 'eel', 'marlin', 'dragonfish', 'megalodon', 'leviathan'];
 var CLOTHING_SPEED_BONUS_PER_PIECE = 0.04; // 5 pieces => 20% total when a full set is equipped
 var CLOTHING_LUCK_BONUS_PER_PIECE = 0.02; // 5 pieces => 10% total when a full set is equipped
 var CLOTHING_SELL_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
@@ -322,7 +346,19 @@ var CLOTHING_PROFICIENCY_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a
 var CLOTHING_DOUBLE_CATCH_BONUS_PER_PIECE = 0.03; // 5 pieces => 15% total when a full set is equipped
 var CLOTHING_BIGONE_BONUS_PER_PIECE = 0.1; // 5 pieces => +50% relative Big One chance when a full set is equipped
 var CLOTHING_MYTHIC_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative mythic-find chance when a full set is equipped
+var CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE = 0.05; // 5 pieces => 25% total when a full set is equipped
 var CLOTHING_UNIQUE_BONUS_PER_PIECE = 0.08; // 5 pieces => +40% relative unique-find chance when a full set is equipped
+
+// ---- Sturgeon -> Leviathan: reused stats at a bigger magnitude ----
+var CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE = 0.07; // proficiency gain, like Carp -- 35% total, beats Carp's 25%
+var CLOTHING_KOI_SELL_BONUS_PER_PIECE = 0.05; // sell price, like Perch -- 25% total, beats Perch's 15%
+var CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE = 0.05; // double-catch chance, like Trout -- 25% total, beats Trout's 15%
+var CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE = 0.15; // Big One trigger chance, like Catfish -- +75% relative, beats Catfish's +50%
+var CLOTHING_EEL_XP_BONUS_PER_PIECE = 0.09; // fishing XP, like Bluegill -- 45% total, beats Bluegill's 30%
+var CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE = 0.06; // catch-quality luck, like Anchovies -- 30% total, beats Anchovies' 10%
+var CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE = 0.13; // mythic-find chance, like Crab -- +65% relative, beats Crab's +40%
+var CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE = 0.14; // unique-find chance, like Lobster -- +70% relative, beats Lobster's +40%
+var CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE = 0.08; // fishing speed, like Shrimp -- 40% total, beats Shrimp's 20% (the biggest number of the whole roster, fitting the final, level-90 capstone set)
 // A clothing piece can carry a `pixels` array ([x,y,hex] cell overrides on
 // the 24x24 avatar grid, painted last in pixelAvatarHTML(), render.js) to
 // actually change how the character looks when it's equipped -- otherwise a
@@ -356,7 +392,17 @@ var CLOTHING_SET_COLORS = {
   trout: '#4FA88C',
   catfish: '#6B5D52',
   crab: '#D9622B',
-  lobster: '#A32638'
+  lobster: '#A32638',
+  bass: '#4F7942',
+  sturgeon: '#5C6B73',
+  koi: '#E8A4B8',
+  squid: '#6A4C93',
+  octopus: '#8E2F6B',
+  eel: '#2E5C50',
+  marlin: '#1C5D8C',
+  dragonfish: '#7A1F2B',
+  megalodon: '#34434D',
+  leviathan: '#1A2E4A'
 };
 var CLOTHING_SETS = {
   shrimp: [
@@ -421,6 +467,76 @@ var CLOTHING_SETS = {
     {slot:'pants', name:'Lobster-tail Waders', icon:'🦞', flavor:'A stiff, springy stride that never quite feels natural.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.lobster)},
     {slot:'shoes', name:'Lobster-leg Boots', icon:'🦞', flavor:'Ten legs\' worth of confidence packed into two boots.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.lobster)},
     {slot:'gloves', name:'Lobster-claw Gauntlets', icon:'🦞', flavor:'Heavy, armored, and strangely precise for something this bulky.', uniqueLuckBonus:CLOTHING_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.lobster)}
+  ],
+  bass: [
+    {slot:'hat', name:'Bass-fin Cap', icon:'🐟', flavor:'Brim like a dorsal fin. You strike before you even feel the bite.', instantCatchBonus:CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.bass)},
+    {slot:'shirt', name:'Bass-scale Vest', icon:'🐟', flavor:'Olive-green plating, built for a hard, sudden strike.', instantCatchBonus:CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.bass)},
+    {slot:'pants', name:'Bass-tail Waders', icon:'🐟', flavor:'Coiled and ready. You are never caught flat-footed in these.', instantCatchBonus:CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.bass)},
+    {slot:'shoes', name:'Bass-fin Boots', icon:'🐟', flavor:'Explosive off the mark, like the fish itself.', instantCatchBonus:CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.bass)},
+    {slot:'gloves', name:'Bass-jaw Gloves', icon:'🐟', flavor:'A hair-trigger reflex you did not have before.', instantCatchBonus:CLOTHING_INSTANT_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.bass)}
+  ],
+  sturgeon: [
+    {slot:'hat', name:'Sturgeon-plate Cap', icon:'🐟', flavor:'Ridged like an ancient shell. Heavy, but you stop noticing.', proficiencyBonus:CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.sturgeon)},
+    {slot:'shirt', name:'Sturgeon-scute Vest', icon:'🐟', flavor:'Bony plating from a fish older than the dock itself.', proficiencyBonus:CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.sturgeon)},
+    {slot:'pants', name:'Sturgeon-tail Waders', icon:'🐟', flavor:'Built to stand firm against something that outweighs you.', proficiencyBonus:CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.sturgeon)},
+    {slot:'shoes', name:'Sturgeon-fin Boots', icon:'🐟', flavor:'Every step feels like it is testing the riverbed.', proficiencyBonus:CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.sturgeon)},
+    {slot:'gloves', name:'Sturgeon-barbel Gloves', icon:'🐟', flavor:'You read the whole rod through these, not just the tip.', proficiencyBonus:CLOTHING_STURGEON_PROFICIENCY_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.sturgeon)}
+  ],
+  koi: [
+    {slot:'hat', name:'Koi-fin Cap', icon:'🐟', flavor:'Patterned like a prize-winning pond fish. Buyers notice.', sellBonus:CLOTHING_KOI_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.koi)},
+    {slot:'shirt', name:'Koi-scale Vest', icon:'🐟', flavor:'Mottled orange and white. Looks expensive because it is.', sellBonus:CLOTHING_KOI_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.koi)},
+    {slot:'pants', name:'Koi-tail Waders', icon:'🐟', flavor:'Ornamental stitching that somehow survives the water.', sellBonus:CLOTHING_KOI_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.koi)},
+    {slot:'shoes', name:'Koi-fin Boots', icon:'🐟', flavor:'Too nice for the dock. You wear them anyway.', sellBonus:CLOTHING_KOI_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.koi)},
+    {slot:'gloves', name:'Koi-silk Gloves', icon:'🐟', flavor:'You haggle better wearing these. Nobody knows why.', sellBonus:CLOTHING_KOI_SELL_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.koi)}
+  ],
+  squid: [
+    {slot:'hat', name:'Squid-mantle Cap', icon:'🦑', flavor:'Slick and dark. Something about it invites a second catch.', doubleCatchBonus:CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.squid)},
+    {slot:'shirt', name:'Squid-ink Vest', icon:'🦑', flavor:'Faintly stained purple. Never quite washes out.', doubleCatchBonus:CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.squid)},
+    {slot:'pants', name:'Squid-tentacle Waders', icon:'🦑', flavor:'Flexible in a way that feels faintly unnatural.', doubleCatchBonus:CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.squid)},
+    {slot:'shoes', name:'Squid-fin Boots', icon:'🦑', flavor:'Quiet, gliding steps across the dock.', doubleCatchBonus:CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.squid)},
+    {slot:'gloves', name:'Squid-sucker Gloves', icon:'🦑', flavor:'Grips the line tight enough to hold onto two at once.', doubleCatchBonus:CLOTHING_SQUID_DOUBLE_CATCH_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.squid)}
+  ],
+  octopus: [
+    {slot:'hat', name:'Octopus-mantle Cap', icon:'🐙', flavor:'Soft and strange. You feel ready for a fight.', bigOneLuckBonus:CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.octopus)},
+    {slot:'shirt', name:'Octopus-skin Vest', icon:'🐙', flavor:'Changes color faintly depending on the light. Unsettling.', bigOneLuckBonus:CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.octopus)},
+    {slot:'pants', name:'Octopus-arm Waders', icon:'🐙', flavor:'Eight legs\' worth of stubbornness packed into two.', bigOneLuckBonus:CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.octopus)},
+    {slot:'shoes', name:'Octopus-sucker Boots', icon:'🐙', flavor:'Latches onto the dock planks like it does not want to let go.', bigOneLuckBonus:CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.octopus)},
+    {slot:'gloves', name:'Octopus-grip Gloves', icon:'🐙', flavor:'A grip that does not give, no matter how hard it pulls.', bigOneLuckBonus:CLOTHING_OCTOPUS_BIGONE_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.octopus)}
+  ],
+  eel: [
+    {slot:'hat', name:'Eel-skin Cap', icon:'🐍', flavor:'Smooth and slick. You pick up on things faster wearing it.', xpBonus:CLOTHING_EEL_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.eel)},
+    {slot:'shirt', name:'Eel-hide Vest', icon:'🐍', flavor:'Dark and supple. Every cast teaches you something new.', xpBonus:CLOTHING_EEL_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.eel)},
+    {slot:'pants', name:'Eel-tail Waders', icon:'🐍', flavor:'Slippery enough that you stop fighting the current.', xpBonus:CLOTHING_EEL_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.eel)},
+    {slot:'shoes', name:'Eel-fin Boots', icon:'🐍', flavor:'You find the weak spot in every situation now, apparently.', xpBonus:CLOTHING_EEL_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.eel)},
+    {slot:'gloves', name:'Eel-skin Gloves', icon:'🐍', flavor:'A sharper feel for the line than you have ever had.', xpBonus:CLOTHING_EEL_XP_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.eel)}
+  ],
+  marlin: [
+    {slot:'hat', name:'Marlin-bill Cap', icon:'🐟', flavor:'Sharp brim, like the fish\'s own spear. Everything looks a little more promising.', luckBonus:CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.marlin)},
+    {slot:'shirt', name:'Marlin-scale Vest', icon:'🐟', flavor:'Deep blue plating that catches the open-water light just right.', luckBonus:CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.marlin)},
+    {slot:'pants', name:'Marlin-tail Waders', icon:'🐟', flavor:'Built for a long, lucky run offshore.', luckBonus:CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.marlin)},
+    {slot:'shoes', name:'Marlin-fin Boots', icon:'🐟', flavor:'Every step out here feels like it is headed somewhere good.', luckBonus:CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.marlin)},
+    {slot:'gloves', name:'Marlin-bill Gloves', icon:'🐟', flavor:'A confident grip, like you already know this one is a keeper.', luckBonus:CLOTHING_MARLIN_LUCK_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.marlin)}
+  ],
+  dragonfish: [
+    {slot:'hat', name:'Dragonfish-jaw Cap', icon:'🐉', flavor:'Needle-toothed silhouette from a place sunlight never reaches.', mythicLuckBonus:CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.dragonfish)},
+    {slot:'shirt', name:'Dragonfish-scale Vest', icon:'🐉', flavor:'Faintly luminous in low light. You are not sure how.', mythicLuckBonus:CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.dragonfish)},
+    {slot:'pants', name:'Dragonfish-fin Waders', icon:'🐉', flavor:'Deep-water pressure never seems to bother these.', mythicLuckBonus:CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.dragonfish)},
+    {slot:'shoes', name:'Dragonfish-tail Boots', icon:'🐉', flavor:'Something about the dark feels a little less empty in these.', mythicLuckBonus:CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.dragonfish)},
+    {slot:'gloves', name:'Dragonfish-tooth Gloves', icon:'🐉', flavor:'A strange, sharp feeling that something rare is close.', mythicLuckBonus:CLOTHING_DRAGONFISH_MYTHIC_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.dragonfish)}
+  ],
+  megalodon: [
+    {slot:'hat', name:'Megalodon-tooth Cap', icon:'🦈', flavor:'A single fossil tooth the size of your hand, mounted on the brim.', uniqueLuckBonus:CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.megalodon)},
+    {slot:'shirt', name:'Megalodon-hide Vest', icon:'🦈', flavor:'Thick enough to make you feel like the ocean owes you one.', uniqueLuckBonus:CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.megalodon)},
+    {slot:'pants', name:'Megalodon-fin Waders', icon:'🦈', flavor:'Built like something that was never meant to be caught.', uniqueLuckBonus:CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.megalodon)},
+    {slot:'shoes', name:'Megalodon-tail Boots', icon:'🦈', flavor:'Heavy and ancient, like they remember something you do not.', uniqueLuckBonus:CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.megalodon)},
+    {slot:'gloves', name:'Megalodon-jaw Gloves', icon:'🦈', flavor:'A grip like a relic that refuses to stay buried.', uniqueLuckBonus:CLOTHING_MEGALODON_UNIQUE_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.megalodon)}
+  ],
+  leviathan: [
+    {slot:'hat', name:'Leviathan-scale Cap', icon:'🐋', flavor:'Impossibly large for anything you have ever hooked before.', speedBonus:CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('hat', CLOTHING_SET_COLORS.leviathan)},
+    {slot:'shirt', name:'Leviathan-hide Vest', icon:'🐋', flavor:'Deep, abyssal blue-black. You feel faster just wearing it.', speedBonus:CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('shirt', CLOTHING_SET_COLORS.leviathan)},
+    {slot:'pants', name:'Leviathan-fin Waders', icon:'🐋', flavor:'Nobody sees the Leviathan twice. You move like you know that.', speedBonus:CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('pants', CLOTHING_SET_COLORS.leviathan)},
+    {slot:'shoes', name:'Leviathan-fluke Boots', icon:'🐋', flavor:'Every step carries the weight and speed of something enormous.', speedBonus:CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('shoes', CLOTHING_SET_COLORS.leviathan)},
+    {slot:'gloves', name:'Leviathan-scale Gloves', icon:'🐋', flavor:'The final, fastest grip you will ever put on a rod.', speedBonus:CLOTHING_LEVIATHAN_SPEED_BONUS_PER_PIECE, pixels:clothingSlotPixels('gloves', CLOTHING_SET_COLORS.leviathan)}
   ]
 };
 FISH.forEach(function(fish){

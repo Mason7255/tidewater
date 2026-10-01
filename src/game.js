@@ -23,6 +23,15 @@ import { CATCH_HISTORY_LIMIT, buffRemainingMs, fishDisplayEmoji, floatForEntry, 
 // of the regular one (see playLevelSound in audio.js).
 var LEVEL_MILESTONES = [10, 25, 50, 75, 99];
 
+// Bass set/Vintage Bass Lure "instant catch": the cast-start handler below
+// overrides the normal castDurationMs(fish) wait with this instead, when the
+// instant-catch roll succeeds. Not 0ms -- playCastAnimation()'s own ripple
+// (320-500ms) and rod-settle (500-850ms) still need a moment to land, so a
+// true-zero wait would resolve the catch before the lure visibly hits the
+// water. 400ms reads as a snap bite against either BASE_CAST_MS (5000) or
+// NO_BAIT_CAST_MS (12000) while still letting the ripple show.
+var INSTANT_CATCH_MS = 400;
+
 export var swatchRow = document.getElementById('swatchRow');
 export var hatRow = document.getElementById('hatRow');
 export var nameInput = document.getElementById('nameInput');
@@ -601,6 +610,23 @@ export function totalClothingDoubleCatchBonus(){
   return Math.min(total, 0.9); // safety ceiling as more sets get added later
 }
 
+// Bass set: flat chance for a cast to resolve immediately instead of
+// waiting out its normal cast time (see the cast-start handler below).
+// Stacks additively with the Vintage Bass Lure trinket's own
+// instantCatchBonus, same relationship every other clothing bonus has with
+// its species' unique item.
+export function totalClothingInstantCatchBonus(){
+  if(!state.equippedClothing) return 0;
+  var total = 0;
+  CLOTHING_SLOTS.forEach(function(slot){
+    var id = state.equippedClothing[slot];
+    if(!id || !isClothingOwned(id)) return;
+    var item = clothingItems().filter(function(c){ return c.id===id; })[0];
+    if(item) total += item.instantCatchBonus || 0;
+  });
+  return Math.min(total, 0.9); // safety ceiling as more sets get added later
+}
+
 // Catfish set: relative multiplier on the chance a completed cast triggers a
 // Big One encounter (see BIG_ONE_CHANCE / the cast-completion handler
 // below). Stacks additively with the Rusted Key trinket's own
@@ -724,6 +750,19 @@ export function totalTrinketDoubleCatchBonus(){
     if(!isTrinketOwned(id)) return;
     var item = trinketById(id);
     if(item) total += item.doubleCatchBonus || 0;
+  });
+  return Math.min(total, 0.9);
+}
+// Vintage Bass Lure (the Bass unique): stacks additively with the Bass
+// clothing set's own instantCatchBonus -- see
+// totalClothingInstantCatchBonus() above.
+export function totalTrinketInstantCatchBonus(){
+  if(!state.equippedTrinkets) return 0;
+  var total = 0;
+  state.equippedTrinkets.forEach(function(id){
+    if(!isTrinketOwned(id)) return;
+    var item = trinketById(id);
+    if(item) total += item.instantCatchBonus || 0;
   });
   return Math.min(total, 0.9);
 }
@@ -1533,8 +1572,18 @@ export function beginSingleCast(sessionId){
   updateHud();
   playCastAnimation();
 
-  var duration = castDurationMs(fish);
-  autoFishStatusText.textContent = 'Line\'s out…';
+  // Bass set/Vintage Bass Lure: a flat chance for THIS cast to resolve in a
+  // near-instant snap instead of waiting out its normal cast time. Rolled
+  // once, right here, so the shortened duration can also drive the progress
+  // bar's own transition below -- nothing else about the catch changes
+  // (quality, drops, XP all still roll normally when it awards). Not fully
+  // 0ms: the cast animation/ripple above needs a moment to land, so the
+  // instant case still gets a short, snappy wait instead of the fish
+  // appearing before the lure visibly hits the water.
+  var instantCatchChance = totalClothingInstantCatchBonus() + totalTrinketInstantCatchBonus();
+  var isInstantCatch = instantCatchChance > 0 && Math.random() < instantCatchChance;
+  var duration = isInstantCatch ? INSTANT_CATCH_MS : castDurationMs(fish);
+  autoFishStatusText.textContent = isInstantCatch ? 'Instant bite!' : 'Line\'s out…';
   autoFishCountText.textContent = '';
   if(autoFishProgressFill){
     autoFishProgressFill.style.transition = 'none';
